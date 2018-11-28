@@ -1,2 +1,11 @@
 # my_tools
-Some tool packages that I use for my codes.
+Personal tools that I use for my codes.
+
+* file_tools.py
+  Argv reading and checking. Configuration file reading and writing.
+
+* network_gen_tools.py
+  Generation and manipulation algorithms for networks, using python's networkx.
+  
+* database_tools.py
+  Tools for manipulating output files from 'paramvar' simulations. 
