@@ -2,6 +2,7 @@ import os
 import sys
 
 SEP = "/"  # Use '/' for Linux and '\\' for Windows.
+HEADER_END = "-----\n"
 
 # --------------------------------
 # FOLDER, FILE AND ARGV OPERATIONS

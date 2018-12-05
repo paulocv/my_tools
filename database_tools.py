@@ -7,52 +7,8 @@ import pandas as pd
 import numpy as np
 from toolbox.file_tools import read_file_header, read_config_strlist, read_csv_names, \
     str_to_list
+from toolbox.paramvar_tools import get_varparams
 # import matplotlib.pyplot as plt
-
-
-def get_variable_parameters(input_dict, varparams_key="vary_parameters"):
-    """
-    Reads the "vary_parameters" input (i.e., the list of names of the
-    parameters that must vary during all the simulations.
-    Also interpret each variable parameter as a list.
-
-    Returns a dictionary with the varying parameter names as keys and
-    the corresponding lists of values as values.
-
-    Parameters
-    ----------
-    input_dict : dict
-        Dictionary with the inputs, duh.
-    varparams_key : str
-        Keyword for the varying parameter names. They should be found
-        in the input_dict.
-
-    Returns
-    -------
-    var_param_names : list
-        List of the names of the varying parameters, in the order that
-        they were written on the 'varparam_key' input from the input
-        dict.
-    values_list : list
-        List of the varying parameters values lists, in the same order
-        of var_param_names.
-    """
-
-    # Reads the names of the parameters that will vary
-    try:
-        var_param_names = read_csv_names(input_dict[varparams_key])
-    except KeyError:
-        raise KeyError("HEY, keyword '{}' was not found in"
-                       "the input file.".format(varparams_key))
-
-    # For each varying parameter, tries to interpret the corresponding list
-    # of values in the input_dict.
-    values_list = []
-    for name in var_param_names:
-        # Interprets the input as a list.
-        values_list += [str_to_list(input_dict[name], name)]
-
-    return var_param_names, values_list
 
 
 def read_complete_output_file(filename,
@@ -103,7 +59,7 @@ def read_complete_output_file(filename,
     header_size = len(file_header) + 1
     input_dict = read_config_strlist(file_header, entry_char, attribution_char,
                                      comment_char)
-    names_list, values_list = get_variable_parameters(input_dict, varparams_key)
+    names_list, values_list = get_varparams(input_dict, varparams_key)
 
     # Constructs the MultiIndex object as the cartesian product of all varying
     # parameters
