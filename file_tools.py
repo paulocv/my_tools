@@ -1,3 +1,8 @@
+""" 
+Version: 2.0 - First version to reveive a version number. :p
+(1.x will be left for older non-registered versions).
+"""
+
 import os
 import sys
 
@@ -119,6 +124,13 @@ def remove_border_spaces(string):
     return string
 
 
+def add_spaces_to_fill(text, places):
+    """Adds blank spaces to a string so that the length of the final
+    string is given by 'places'.
+    """
+    return text + (places-len(text))*" "
+
+
 def str_to_list(string, key_name=""):
     """Evaluates a string as a list. Checks if border characters are
     '[' and ']', to avoid bad typing.
@@ -130,6 +142,21 @@ def str_to_list(string, key_name=""):
         return list(eval(string))
     else:
         raise ValueError("Hey, bad parameter or list of parameters"
+                         " in {} = {}".format(key_name,
+                                              string))
+
+
+def str_to_tuple(string, key_name=""):
+    """Evaluates a string as a tuple. Checks if border characters are
+    '(' and ')', to avoid bad typing.
+
+    key_name : string (optional)
+        Name of the parameter. Useful for error message.
+    """
+    if string[0] == '(' and string[-1] == ')':
+        return tuple(eval(string))
+    else:
+        raise ValueError("Hey, bad parameter or tuple of parameters"
                          " in {} = {}".format(key_name,
                                               string))
 
@@ -205,6 +232,24 @@ def read_csv_names(string):
         "beta, pj ,  num_steps" --> ['beta', 'pj', 'num_steps']
     """
     return [remove_border_spaces(name) for name in string.split(',')]
+
+
+def cast_to_export(value):
+    """Converts a given variable to a string which is 'fancy' to be
+    exported to output database files.
+    """
+    vtype = type(value)
+
+    if vtype == float:
+        out = "{:12.6f}".format(value)
+
+    elif vtype == int:
+        out = "{:12d}".format(value)
+
+    else:
+        out = str(value)
+
+    return out
 
 # -------------------------------------------------------------------
 # CONFIGURATION FILE common operations
@@ -498,3 +543,56 @@ def read_file_header(filename, header_end="-----\n"):
     raise EOFError("Hey, I did not find the header ending string on file:\n"
                    "File: '{}'\n"
                    "Ending str:'{}'\n".format(fp.name, header_end))
+
+# -------------------------------
+# ZIP/UNZIP FUNCTIONS
+# -------------------------------
+
+
+def tar_zip_folder(dirname, tarname=None, remove_orig=True, level=5):
+    """Compresses a folder to a tar.gz file.
+
+    Parameters
+    ----------
+    dirname : str
+        Path of the folder to be compressed.
+    tarname : str
+        Path for the tar.gz file. Optional. If not informed, uses the
+        name of the folder.
+    remove_orig : bool
+        Bool to remove the original folder after zipping.
+        By default, it removes (True).
+    level : int
+        Level of compression, being 1 the fastest and 9 the best.
+        Default is 5.
+    """
+
+    # Dirname here will not have the SEP character at the end
+    if dirname[-1] == SEP:
+        dirname = dirname[:-1]
+
+    # If tar_name is not informed, uses directory name
+    if tarname is None:
+        tarname = dirname + ".tar"
+
+    # Compresses folder (supresses output to "null")
+    # -f: Does not ask to overwrite.
+    # os.system("tar -cvzf " + tarname + " " + dirname + " > null")
+    os.system("tar -cvf " + tarname + " " + dirname + " > null")
+    os.system("gzip -{} -f ".format(level) + tarname)
+
+    # Removes the original folder
+    if remove_orig:
+        # os.system("rm " + dirname + SEP + "*")
+        os.system("rm -r " + dirname)
+
+
+def tar_unzip_folder(tarname, remove_orig=True):
+    """Unzips and turns a .tar.gz file into a folder again."""
+    # Unzips and untars
+    os.system("tar -xvzf " + tarname + " > null")
+
+    # Removes the original tar
+    if remove_orig:
+        # os.system("rm " + dirname + SEP + "*")
+        os.system("rm " + tarname)
