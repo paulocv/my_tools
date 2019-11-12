@@ -207,6 +207,7 @@ def seconds_to_hhmmss(time_s):
     Input can either be a string or floating point.
     'ss' is rounded to the closest integer.
 
+    Returns a string: []h[]m[]s
     """
     time_s = float(time_s)
 
@@ -252,7 +253,7 @@ def cast_to_export(value):
     return out
 
 # -------------------------------------------------------------------
-# CONFIGURATION FILE common operations
+# CONFIGURATION FILE AND INPUT DICIONARYcommon operations
 # -------------------------------------------------------------------
 
 
@@ -277,6 +278,73 @@ def read_optional_from_dict(input_dict, key, standard_val=None,
         return val
     else:
         return typecast(val)
+
+
+def read_kwargs_from_dict(input_dict, type_dict):
+    """ Reads, from an input dictionary, a set of keyword arguments.
+    This function is useful to gather optional arguments for a function call
+    from a greater, more complete, input dictionary. For this purpose,
+    keys that are not found at input_dict are simply ignored.
+
+    The desired keywords mus be the keys of type_dict, whose values
+    must be the type cast callable. None can be passed as a type cast
+    for no conversion.
+
+    Parameters
+    ------
+    input_dict : dict
+        Dictionary with the input keywords. Can contain more than the
+        necessary keywords.
+    type_dict : dict
+        Dictionary with the desired names as keys and their type casts
+        as values. Type can be None for no conversion.
+    """
+    kwargs = dict()
+
+    for key, cast in type_dict.items():
+        try:
+            if cast is None:
+                kwargs[key] = input_dict[key]
+            else:
+                kwargs[key] = cast(input_dict[key])
+        except KeyError:
+            pass
+
+    return kwargs
+
+
+def read_args_from_dict(input_dict, arg_names, arg_types):
+    """Reads *mandatory* arguments from an input dictionary.
+    Useful for reading positional arguments for a function.
+
+    All the names in arg_names must be present as keys of
+    input_dict, and the number of elements of arg_names and
+    arg_types must match. However, an item of arg_types can
+    be passed as None to avoid its type cast.
+
+    Returns a tuple with the gathered and casted parameters,
+    sorted according to arg_names.
+
+    Parameters
+    ----------
+    input_dict : dict
+    arg_names : list, tuple
+    arg_types : list, tuple
+    """
+    if len(arg_names) != len(arg_types):
+        raise ValueError("Hey, the number of argument names ({}) and the "
+                         "number of argument types ({}) do not match!"
+                         "".format(len(arg_names), len(arg_types)))
+
+    args = []
+
+    for name, cast in zip(arg_names, arg_types):
+        if cast is None:
+            args.append(input_dict[name])
+        else:
+            args.append(cast(input_dict[name]))
+
+    return tuple(args)
 
 
 def read_config_file(file_path, entry_char='>', attribution_char='=',
