@@ -157,7 +157,7 @@ def read_mixed_output_file(filename, decimal_places=9,
                                      comment_char)
 
     # Tries to read the varying parameter names, if they are not informed
-    # as 'varparams_names'
+    # as 'varparams_names' argument
     if varparams_names is None:
         try:
             varparams_names = read_csv_names(input_dict[varparams_key])
@@ -191,17 +191,43 @@ def read_mixed_output_file(filename, decimal_places=9,
     indexing_df.columns = varparams_names
     values_df.columns = names
 
-    # Index construction (by rounding the values)
+    # ------------------
+    # Construction of the index object
+
+    # Gets the data types of each column (using the FIRST LINE)
+    dtypes = [type(x) for x in indexing_df.loc[0]]
+
+    # Function that converts an str type into 'object'.
+    def conv(dtype):
+        if dtype in [str]:
+            return object
+        else:
+            return dtype
+
     df_size = len(indexing_df)
-    index = np.empty((len(varparams_names), df_size))
+
+    # Initializes the index object as a list of np arrays.
+    # Uses the function 'conv' to convert "str" into "object", so the strings
+    # are correctly stored (otherwise, stores only the first char).
+    index = [np.empty(df_size, dtype=conv(tp)) for tp in dtypes]  # New: list of arrays
+    # index = np.empty((len(varparams_names), df_size))  # Old: 2D array
+
+    # Makes a list of booleans that tells if the value can be rounded.
+    # Eg: a string cannot be rounded, therefore comparison is exact.
+    is_not_roundable = [x in [str] for x in dtypes]
 
     # For each line of the index df
     for i in range(df_size):
         line = indexing_df.loc[i]
         # For each parameter value of the line
-        for j, value in enumerate(line):
-            # Stores the rounded values of the parameter values
-            index[j][i] = round(value, decimal_places)
+        for j, (value, nroundable) in enumerate(zip(line, is_not_roundable)):
+            # Stores the current value. Checks if the value should be rounded.
+            if nroundable:
+                # Non-roundable value.
+                index[j][i] = value
+            else:
+                # Stores the rounded values of the parameter values
+                index[j][i] = round(value, decimal_places)
 
     # Converts the arrays into Pandas MultiIndex object and sets to df
     values_df.index = pd.MultiIndex.from_arrays(index, names=varparams_names)
