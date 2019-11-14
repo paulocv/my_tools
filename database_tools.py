@@ -5,39 +5,48 @@ typically with several varying parameters.
 
 import pandas as pd
 import numpy as np
-from toolbox.file_tools import read_file_header, read_config_strlist, read_csv_names, \
-    str_to_list
-from toolbox.paramvar_tools import get_varparams
-# import matplotlib.pyplot as plt
+import itertools
+from toolbox.file_tools import read_file_header, read_config_strlist, read_csv_names
+from toolbox.paramvar_tools import get_varparams_with_zip, ziplist_to_flat
 
 
 def read_complete_output_file(filename,
                               entry_char=">", attribution_char="=", comment_char="#",
-                              header_end="-----\n", varparams_key="vary_parameters",
-                              delimiter='\t',
+                              header_end="-----\n", varparam_key="vary_parameters",
+                              zip_key="zip_parameters", unpack_zips=True, delimiter='\t',
                               names=None):
-    """Imports dataframe from an output summary file based on its HEADER.
+    """
+    Imports dataframe from an output summary file based on its HEADER.
     I.e., looks for the varying parameters in 'vary_parameters' entry, then
     interpret the lists of values.
     The DataFrame index is built as the cartesian product of all varying
-    parameters.
+    parameters. Yet (update 11/2019) it may accept also zipped
+    tuples of parameters that were varied together.
 
-    Inputs
+    Parameters
     ------
     filename : str
         Name of the input file
     entry_char : str
         Character used to start an input line in the file header.
-    attrbution_char : str
+    attribution_char : str
         Character that separates the key name from its value (header only).
     comment_char : str
         Character that indicates a comment. Used both for header and data.
     header_end : str
         String that defines the separation between the header and the main data.
         It must contain '\n' at the end.
-    varparams_key : str
+    varparam_key : str
         Keyword for the varying parameter names list in the header. Ex:
         > vary_parameters = rho, kappa, pi, beta_ep
+    zip_key : str
+        Keyword for the zipped sets of parameters. Ex:
+        > zip_parameters = (rho, kappa)
+    unpack_zips : bool
+        If True (default), the zipped sets of parameters are flattened
+        at the multiindex of the resulting dataframe, meaning that each
+        zipped parameter will have its own level of hierarchy. If False,
+        zipped parameters are grouped as tuples in a single level.
     delimiter : str
         horizontal delimiter between column entries
     names : list
@@ -59,12 +68,28 @@ def read_complete_output_file(filename,
     header_size = len(file_header) + 1
     input_dict = read_config_strlist(file_header, entry_char, attribution_char,
                                      comment_char)
-    names_list, values_list = get_varparams(input_dict, varparams_key)
+    names_list, values_list = get_varparams_with_zip(input_dict, varparam_key,
+                                                     zip_key)
+    flat_names_list = ziplist_to_flat(names_list)
 
     # Constructs the MultiIndex object as the cartesian product of all varying
-    # parameters
-    index = pd.MultiIndex.from_product(values_list,
-                                       names=names_list)
+    # parameters (handling zipped ones correctly).
+    if unpack_zips:
+        # This loop constructs the flattened/unpacked list of parameter sets,
+        # in the way they are expected to be at the file.
+        index_tuples = []
+        for i_sim, parameter_values in enumerate(itertools.product(*values_list)):
+            # Flattens the current set of parameters
+            flat_parameter_values = ziplist_to_flat(parameter_values, return_type=tuple)
+            index_tuples.append(flat_parameter_values)
+
+        # Constructs the multi index with the unpacked version of the param list.
+        index = pd.MultiIndex.from_tuples(index_tuples, names=flat_names_list)
+
+    else:
+        # In this case, constructs the index using tuples for the zipped params.
+        index = pd.MultiIndex.from_product(values_list,
+                                           names=names_list)
 
     # Reads the actual numerical data from file, interpreting it as a
     # pandas DataFrame with a multi-index.
@@ -76,9 +101,9 @@ def read_complete_output_file(filename,
     # delimiter at the end
     df = df.dropna(axis=1)
 
-    # Sets the index and the useful columns
+    # Sets the index and restrict the data frame to the data columns (removes index cols)
     df.index = index
-    df = df.loc[:, len(values_list):]  # Removes the indexing columns
+    df = df.loc[:, len(flat_names_list):]  # Removes the indexing columns
 
     # Sets the default value of the column 'names'
     # If the file header has an "outputs" topic, uses as column names
