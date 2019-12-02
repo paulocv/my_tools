@@ -70,7 +70,7 @@ def get_file_prefix(input_dict, std_prefix):
     return file_prefix
 
 
-def get_varparams(input_dict, varparam_key="vary_parameters"):
+def get_varparams_nozip(input_dict, varparam_key="vary_parameters"):
     """
     Reads the "vary_parameters" input (i.e., the list of names of the
     parameters that must vary during all the simulations.)
@@ -201,6 +201,10 @@ def get_varparams_with_zip(input_dict, varparam_key="vary_parameters",
         values_list = [values_list[i] for i in range(size) if i not in i_names[1:]]
 
     return var_param_names, values_list
+
+
+# Aias to the get_varparams that supports parameter zipping.
+get_varparams = get_varparams_with_zip
 
 
 def _to_tuple(arg):
