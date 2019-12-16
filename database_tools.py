@@ -264,6 +264,36 @@ def read_simulation_file(filename,
                          entry_char=">", attribution_char="=", comment_char="#",
                          header_end=HEADER_END, delimiter='\t', outputs_key="outputs",
                          names=None):
+    """ Reads a simulation file and returns as a dataframe. The file is assumed
+    to have an index as the first column.
+    Additionally, in the file header, the key "> outputs = " (if found)
+    determines the names of the dataframe columns.
+
+    Parameters
+    ------
+    filename : str
+        Name of the input file
+    entry_char : str
+        Character used to start an input line in the file header.
+    attribution_char : str
+        Character that separates the key name from its value (header only).
+    comment_char : str
+        Character that indicates a comment. Used both for header and data.
+    header_end : str
+        String that defines the separation between the header and the main data.
+        It must contain '\n' at the end.
+    outputs_key : str
+        Keyword for the output topics, read from the file header.
+    delimiter : str
+        Horizontal delimiter between column entries
+    names : list
+        List of column names for the DataFrame.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Resulting data frame read from file.
+    """
 
     # Reads the file header and interprets its valid entries.
     file_header = read_file_header(filename, header_end)
