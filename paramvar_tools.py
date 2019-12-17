@@ -1,4 +1,19 @@
-from toolbox.file_tools import remove_border_spaces, str_to_list
+import itertools
+import datetime
+import time
+import pathos.multiprocessing as mp
+
+from toolbox.file_tools import remove_border_spaces, str_to_list, \
+    get_bool_from_dict, read_argv_optional, seconds_to_hhmmss, \
+    cast_to_export, read_optional_from_dict, str_to_bool
+
+STD_FILE_PREFIX = "paramvar"
+SUMMARY_SUFFIX = "_summary.out"
+SIM_SUFFIX = "_{:05d}.sim"
+
+CHECK_OVERWRITE = False
+STD_RUN_PARALLEL = False
+STD_PARALLEL_EXECS = False
 
 
 def read_csv_names(string):
@@ -12,13 +27,11 @@ def read_csv_names(string):
 def read_sequence_of_tuples(string):
     """Reads a sequence of tuples from a string, returning indeed a
     list of tuples.
-
     Examples:
     "(beta2, mu2), (a, b, c)" --> [("beta2", "mu2), ("a", "b", "c")]
     "( )"  -->  []
     " "  -->  ValueError
     " (a, b " -->  ValueError
-
     Parameters
     ----------
     string : str
@@ -75,10 +88,8 @@ def get_varparams_nozip(input_dict, varparam_key="vary_parameters"):
     Reads the "vary_parameters" input (i.e., the list of names of the
     parameters that must vary during all the simulations.)
     Also interpret each variable parameter as a list.
-
     Returns a dictionary with the varying parameter names as keys and
     the corresponding lists of values as values.
-
     Parameters
     ----------
     input_dict : dict
@@ -86,7 +97,6 @@ def get_varparams_nozip(input_dict, varparam_key="vary_parameters"):
     varparam_key : str
         Keyword for the varying parameter names. They should be found
         in the input_dict.
-
     Returns
     -------
     var_param_names
@@ -129,12 +139,9 @@ def get_varparams_with_zip(input_dict, varparam_key="vary_parameters",
     parameters that must vary during all the simulations.) and the
     "zip_parameters input (i.e., the sets of parameters that should
     be varied together).
-
     Also interpret each variable parameter as a list.
-
     Returns a dictionary with the varying parameter names as keys and
     the corresponding lists of values as values.
-
     Parameters
     ----------
     input_dict : dict
@@ -151,7 +158,6 @@ def get_varparams_with_zip(input_dict, varparam_key="vary_parameters",
         list with the same size, and an error is raised if a length is
         different. If False, silently allows different sizes, truncating
         by the smallest one.
-
     Returns
     -------
     var_param_names
@@ -218,12 +224,14 @@ def ziplist_to_flat(zipped_list, return_type=_to_tuple):
     returns a flattened copy in which parameters inside
     the tuples are brought back to the first level, at the order that
     they appear.
-
     By default, the returned object is converted to tuple, which is
     more convenient for paramvar.
-
     Notice: regular values from the names_list cannot be tuples, as
     they will be confused with a zipped list of values.
+
+    Returns
+    -------
+    A flattened list or tuple, depending on return_type.
     """
     flat_list = []
     for element in zipped_list:
@@ -245,10 +253,8 @@ def zip_params_to_flat(names_list, values_list):
     returns a flattened copy in which parameters inside
     the tuples are brought back to the first level, at the order that
     they appear.
-
     Similar to ziplist_to_flat, but makes the job in names and values
     list simultaneously.
-
     Notice: regular values from the names_list cannot be tuples, as
     they will be confused with a zipped list of values.
     """
@@ -269,15 +275,36 @@ def zip_params_to_flat(names_list, values_list):
     return flat_names, flat_values
 
 
+def get_parallel_bools(mult_input_dict, run_parallel_key="run_parallel",
+                       parallel_execs_key="parallel_over_executions"):
+    """Reads, from a multinput_dict, the booleans that determine if and
+    how the simulations should be parallelized."""
+    # Decides if there will be any parallelization
+    try:
+        run_parallel = get_bool_from_dict(mult_input_dict, run_parallel_key,
+                                          raise_keyerror=True)
+    except KeyError:
+        run_parallel = STD_RUN_PARALLEL
+
+    # Decides if the parallelization will be over executions or simulations.
+    if run_parallel:
+        parallel_execs = read_optional_from_dict(mult_input_dict, parallel_execs_key,
+                                                 standard_val=STD_PARALLEL_EXECS,
+                                                 typecast=str_to_bool)
+    else:
+        parallel_execs = False
+
+    return run_parallel, parallel_execs
+
+
 def build_single_input_dict(mult_input_dict, keys_list, values_list):
     """Returns a single-input dict from a mult-input dict, for the given
     set of variable parameters.
-
     Parameters
     ----------
     mult_input_dict : dict
         Original dictionary with mult-inputs (sets of variable parameters).
-    keys_list : list
+    keys_list : list, tuple
         List of names of the variable parameters.
     values_list : list or tuple
         List of values of the variable parameters. Must follow the same order
@@ -291,3 +318,126 @@ def build_single_input_dict(mult_input_dict, keys_list, values_list):
         single_input_dict[keys_list[i]] = values_list[i]
 
     return single_input_dict
+
+
+def run_simulations_general(mult_input_dict, sim_func,
+                            summary_file_path, var_params_tuple=None,
+                            run_parallel=False, parallel_execs=False):
+    """A general shape of a 'run_simulations' function, which is the
+     core of the paramvar.
+     This function takes a multinput dictionary and (optionally) a set of
+     names and values of parameters to vary and promotes the simulation
+     with all required sets of parameters.
+
+     Parameters
+     ----------
+     mult_input_dict : dict
+        The input dictionary, as read from an input file, which contains
+        all the information for the paramvar and the simulations.
+     sim_func : callable
+        A function that executes the simulations for one set of parameters.
+        Its signature is the following:
+            sim_func(input_tuple)
+        where input_tuple is (i_sim, input_dict):
+            i_sim = index of the current simulation
+            input_dict = input dictionary for a single set of parameters.
+     summary_file_path : str
+        The path for the summary file, in which the summarizing measures of
+        each simulation will be written.
+     var_params_tuple : tuple
+        (Optional) a tuple as (names_list, values_list), in which
+        names_list contains the names of the varying parameters, and
+        values_list is a nested list of their values, following the
+        same order.
+     run_parallel : bool
+        If True, simulations are parallelized.
+     parallel_execs : bool
+        If True and also if run_parallel is True, then the parallelization
+        occurs at the level of independent executions, and not over
+        different simulations.
+    """
+    # If var_params_tuple was not informed, construct it from multinput dict
+    if var_params_tuple is None:
+        var_params_tuple = get_varparams_with_zip(mult_input_dict)
+
+    # Separates the varying parameter names and values lists.
+    names_list, values_list = var_params_tuple
+    flat_names_list = ziplist_to_flat(names_list)  # Flattened version, without zip params
+
+    # Gets the number of simulations that will be executed:
+    num_sim = len(list(itertools.product(*values_list)))
+
+    # Initial screen feedback
+    print("--------------------")
+    print("Call at {}.".format(datetime.datetime.now()))
+    print("Paramvar for model: " + mult_input_dict["model"])
+    print("Varying parameters:")
+    for name, values in zip(names_list, values_list):
+        print(" {} = {}".format(name, values))
+    print("Run parallel = {}.".format(run_parallel))
+    print("Total of {} simulations.".format(num_sim))
+    print("--------------------")
+
+    # Constructs the list of input dictionaries and parameter values.
+    input_dict_list = []
+    varparam_strings = []
+    for i_sim, parameter_values in enumerate(itertools.product(*values_list)):
+        # Flattens the list of parameter values, which possibly contains tuples
+        # of zipped parameters.
+        flat_parameter_values = ziplist_to_flat(parameter_values)
+
+        # Creates a single-input dict with the current values of the variables.
+        input_dict_list += [build_single_input_dict(mult_input_dict,
+                                                    flat_names_list,
+                                                    flat_parameter_values)]
+
+        # Exports the parameter set to the list of strings
+        param_str = ""
+        for value in flat_parameter_values:  # Current parameters
+            param_str += (cast_to_export(value) + "\t")
+        varparam_strings += [param_str]
+
+        # # Screen feedback for the current simulation run
+        # print("\n[{} of {}] Parameters: ".format(i_sim+1, num_sim), end="")
+        # for name, val in zip(names_list, parameter_values):
+        #     print("{} = {}, ".format(name, val), end="")
+        # print()
+        # print(*output_topics, sep="\t")
+
+    # def sim_func(input_tup):  # Must receive a single argument: a tuple.
+    #     return single_simulation(input_tup[0], input_tup[1], summary_file_path,
+    #                              num_sim, parallel_execs)
+
+    # Multiprocess simulation call
+    if run_parallel and not parallel_execs:
+        # Reads the (optional) number of processes from argv[3]
+        processes = read_argv_optional(3, dtype=int)
+
+        # Defines the parallel pool of processes and the function to call
+        pool = mp.Pool(processes=processes)
+
+        # Actual simulation call, with Pool.map
+        t0 = time.time()
+        summary_strings = pool.map(sim_func, enumerate(input_dict_list))
+
+        # Finally writes the results to summary file
+        for param_str, summary_str in zip(varparam_strings, summary_strings):
+            open(summary_file_path, "a").write(param_str + summary_str)
+
+    # Sequential (or execution-parallel) call
+    else:
+        t0 = time.time()
+
+        # Loops over each set of parameters and runs simulations
+        for (i_sim, input_dict), param_str in zip(enumerate(input_dict_list), varparam_strings):
+            # Runs simulation for current parameter set.
+            summary_str = sim_func((i_sim, input_dict))
+
+            # Writes output to summary file.
+            with open(summary_file_path, "a") as fp:
+                fp.write(param_str + summary_str)
+
+    # Total execution time feedback
+    exec_time = time.time() - t0
+    print("\nTotal execution time: {} ({:0.2f}s)"
+          "".format(seconds_to_hhmmss(exec_time), exec_time))
