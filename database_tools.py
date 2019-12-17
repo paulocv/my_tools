@@ -6,13 +6,13 @@ typically with several varying parameters.
 import pandas as pd
 import numpy as np
 import itertools
-from toolbox.file_tools import read_file_header, read_config_strlist, read_csv_names
+from toolbox.file_tools import read_file_header, read_config_strlist, read_csv_names, HEADER_END
 from toolbox.paramvar_tools import get_varparams_with_zip, ziplist_to_flat
 
 
 def read_complete_output_file(filename,
                               entry_char=">", attribution_char="=", comment_char="#",
-                              header_end="-----\n", varparam_key="vary_parameters",
+                              header_end=HEADER_END, varparam_key="vary_parameters",
                               zip_key="zip_parameters", unpack_zips=True, delimiter='\t',
                               names=None):
     """
@@ -123,7 +123,7 @@ def read_complete_output_file(filename,
 
 def read_mixed_output_file(filename, decimal_places=9,
                            entry_char=">", attribution_char="=", comment_char="#",
-                           header_end="-----\n", varparams_names=None,
+                           header_end=HEADER_END, varparams_names=None,
                            varparams_key="vary_parameters",
                            outputs_key="outputs", delimiter='\t',
                            names=None):
@@ -258,6 +258,67 @@ def read_mixed_output_file(filename, decimal_places=9,
     values_df.index = pd.MultiIndex.from_arrays(index, names=varparams_names)
 
     return values_df
+
+
+def read_simulation_file(filename,
+                         entry_char=">", attribution_char="=", comment_char="#",
+                         header_end=HEADER_END, delimiter='\t', outputs_key="outputs",
+                         names=None):
+    """ Reads a simulation file and returns as a dataframe. The file is assumed
+    to have an index as the first column.
+    Additionally, in the file header, the key "> outputs = " (if found)
+    determines the names of the dataframe columns.
+
+    Parameters
+    ------
+    filename : str
+        Name of the input file
+    entry_char : str
+        Character used to start an input line in the file header.
+    attribution_char : str
+        Character that separates the key name from its value (header only).
+    comment_char : str
+        Character that indicates a comment. Used both for header and data.
+    header_end : str
+        String that defines the separation between the header and the main data.
+        It must contain '\n' at the end.
+    outputs_key : str
+        Keyword for the output topics, read from the file header.
+    delimiter : str
+        Horizontal delimiter between column entries
+    names : list
+        List of column names for the DataFrame.
+
+    Returns
+    -------
+    df : pandas.DataFrame
+        Resulting data frame read from file.
+    """
+
+    # Reads the file header and interprets its valid entries.
+    file_header = read_file_header(filename, header_end)
+    header_size = len(file_header) + 1
+    input_dict = read_config_strlist(file_header, entry_char, attribution_char,
+                                     comment_char)
+
+    # Reads the database from file and removes inexistent entries
+    df = pd.read_table(filename, sep=delimiter,
+                       skiprows=header_size, header=None,
+                       comment=comment_char, index_col=0)
+    df = df.dropna(axis=1)
+
+    # Sets the default value of the column 'names'.
+    # If the file header has an "outputs" topic, uses as column names
+    # Else, uses integer indexes (starting from 0).
+    if names is None:
+        try:
+            names = read_csv_names(input_dict[outputs_key])
+        except KeyError:
+            names = list(range(len(df.columns)))
+
+    df.columns = names  # Renames the columns
+
+    return df
 
 
 def xs_by_dict(df, param_dict, column_names=None):
