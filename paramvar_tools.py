@@ -297,6 +297,16 @@ def get_parallel_bools(mult_input_dict, run_parallel_key="run_parallel",
     return run_parallel, parallel_execs
 
 
+def print_simulation_feedback(i_sim, dt_sim, num_sim=None):
+    now = datetime.datetime.now()
+    if num_sim is None:
+        print("Sim {}: {:0.3f}s  @  {:02d}:{:02d}:{:02d}\n".format(i_sim, dt_sim,
+                                                                   now.hour, now.minute, now.second), end="")
+    else:
+        print("Sim {} of {}: {:0.3f}s  @  {:02d}:{:02d}:{:02d}\n".format(i_sim, num_sim, dt_sim,
+                                                                         now.hour, now.minute, now.second), end="")
+
+
 def build_single_input_dict(mult_input_dict, keys_list, values_list):
     """Returns a single-input dict from a mult-input dict, for the given
     set of variable parameters.
