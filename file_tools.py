@@ -5,6 +5,7 @@ Version: 2.0 - First version to reveive a version number. :p
 
 import os
 import sys
+import numpy as np
 
 SEP = "/"  # Use '/' for Linux and '\\' for Windows.
 HEADER_END = "-----\n"
@@ -236,15 +237,16 @@ def read_csv_names(string):
 
 
 def cast_to_export(value):
-    """Converts a given variable to a string which is 'fancy' to be
+    """Converts a given variable to a string which is 'good' to be
     exported to output database files.
     """
     vtype = type(value)
 
-    if vtype == float:
+    # TODO: improve this to consider numpy int and float types, with all their variants
+    if vtype in [float, np.float32, np.float64]:
         out = "{:12.6f}".format(value)
 
-    elif vtype == int:
+    elif vtype in [int, np.int8, np.int16, np.int32, np.int64]:
         out = "{:12d}".format(value)
 
     else:
