@@ -18,9 +18,7 @@ def remove_selfloops(g):
 
     :param g:(nx graph, digraph, etc) the graph.
     """
-    nodes = g.nodes_with_selfloops()
-    ebunch = [(ni, ni) for ni in nodes]
-    g.remove_edges_from(ebunch)
+    g.remove_edges_from(g.selfloop_edges())
 
 
 def make_connex(g, max_steps=None):
@@ -59,10 +57,10 @@ def make_connex(g, max_steps=None):
         small = rnd.sample(components[1:], 1)[0]
 
         # Gets two connected nodes in each component
-        n1_giant = rnd.sample(giant, 1)[0]
-        n2_giant = rnd.sample(list(g.neighbors(n1_giant)), 1)[0]
-        n1_small = rnd.sample(small, 1)[0]
-        n2_small = rnd.sample(list(g.neighbors(n1_small)), 1)[0]
+        n1_giant = rnd.choice(giant)
+        n2_giant = rnd.choice(list(g.neighbors(n1_giant)))
+        n1_small = rnd.choice(small)
+        n2_small = rnd.choice(list(g.neighbors(n1_small)))
         # n1_giant = rnd.sample(giant, 1)[0]
         # n2_giant = rnd.sample(g.neighbors(n1_giant), 1)[0]
         # n1_small = rnd.sample(small, 1)[0]
@@ -145,7 +143,7 @@ def my_poisson_sequence(size, nu, kmin=0):
     # This rescales the whole distribution.
     if kmin > 0:
         for i, a in enumerate(seq):
-            while seq[i] < kmin:
+            while seq[i] < kmin:  # Inifinite loops prevented by nu >= kmin
                 # Tries to replace by another valid Poisson number
                 seq[i] = np.random.poisson(nu)
 
@@ -182,6 +180,7 @@ layer_keyword_dict['ER'] = ['p', 'seed']
 layer_keyword_dict['BA'] = ['m', 'seed']
 layer_keyword_dict['SF-CM'] = ['gamma', 'k_min', 'seed']
 layer_keyword_dict['FILE'] = ['path']
+layer_keyword_dict['clustered-poisson'] = ['meank_i', 'meank_t', 'k_min']
 
 
 def generate_layer(net_type, size, **kwargs):
@@ -283,7 +282,7 @@ def generate_layer(net_type, size, **kwargs):
 
         # Generates the graph from the power law sequence.
         g = nx.Graph(nx.configuration_model(deg_seq))
-        remove_selfloops(g)
+        # remove_selfloops(g)  # Does externally
 
         # Tries to make the graph connex. May fail depending on the
         # graph itself. In this case, try other seeds.
@@ -295,7 +294,7 @@ def generate_layer(net_type, size, **kwargs):
                  "k_min={:d}, " \
                  "seed={}".format(n, gamma, k_min, seed)
 
-    # Type: Miller/Newman (2009) model for clustered networks.
+    # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
     elif net_type == "clustered-poisson":
 
         # Average independent and triangle degrees
@@ -316,16 +315,109 @@ def generate_layer(net_type, size, **kwargs):
         except KeyError:
             kmin_i = 0
 
-        # Generates the joint degree sequence
-        ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
-        kt_seq = my_poisson_sequence(n, meank_t)
-        make_sequence_even(ki_seq)
-        make_sequence_3multiple(kt_seq)
-        joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+        # Creates the degree sequence and then the graph.
+        # As the nx generator sometimes produces an error even with valid
+        # sequences, we simply try again if that happens. If it happens
+        # consistently, then the error is actually raised.
+        for i_try in range(5):
+            try:
+                # Generates the joint degree sequence
+                ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
+                kt_seq = my_poisson_sequence(n, meank_t)
+                make_sequence_even(ki_seq)
+                make_sequence_3multiple(kt_seq)
+                joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
 
-        g = nx.random_clustered_graph(joint_deg_seq)
-        remove_selfloops(g)
+                g = nx.Graph(nx.random_clustered_graph(joint_deg_seq))  # Removes multilinks
+                # g = nx.random_clustered_graph(joint_deg_seq)
+
+            except nx.NetworkXError:
+                continue
+            else:
+                break
+        else:
+            # Does one more time, just to throw the exception again.
+            raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
+                                   "of a clustered graph.")
+
+        # remove_selfloops(g)
         make_connex(g, n)
+
+        # Sets the name of the graph.
+        g.name = "Poisson_clustered-config-model - n={:d}, " \
+                 "meank_i={:0.4f}, " \
+                 "meank_t={:0.4f}, " \
+                 "kmin_i={:d}, " \
+                 "seed={}".format(n, meank_i, meank_t, kmin_i, seed)
+
+        # TODO
+        # # Debug section.
+        # # ISSUE: Clustering/transit. is smaller than expected, and also depends on network size (shouldn't).
+        # print("-----\nDebug\n-----")
+        # # # Checks sum of all degrees
+        # # print((sum(ki_seq) + 2*sum(kt_seq))/n)
+        # # print(average_degree(g))
+        # for i in range(n):
+        #     print(g.degree(i), end="\t")
+        #     print(ki_seq[i] + 2*kt_seq[i])
+        #
+        # print("-----")
+
+    # Type: Miller/Newman (2009) model for clustered networks, with delta distribution for
+    # the triangles.
+    elif net_type == "clustered-delta":
+
+        # Average independent and triangle degrees
+        # meank_i = float(kwargs["meank_i"])
+        meank_t = float(kwargs["meank_t"])
+
+        # Sets the seed.
+        try:
+            seed = int(kwargs['seed'])
+            rnd.seed(seed)
+        except KeyError:
+            seed = None
+
+        # Minimum independent degree
+        # The triangle degree has no min, i.e., it is zero.
+        try:
+            kmin_t = int(kwargs["k_min"])
+        except KeyError:
+            kmin_t = 0
+
+        # Creates the degree sequence and then the graph.
+        # As the nx generator sometimes produces an error even with valid
+        # sequences, we simply try again if that happens. If it happens
+        # consistently, then the error is actually raised.
+        for i_try in range(5):
+            try:
+                # Generates the joint degree sequence
+                ki_seq = [0] * n
+                kt_seq = my_poisson_sequence(n, meank_t, kmin=kmin_t)
+                # make_sequence_even(ki_seq)
+                make_sequence_3multiple(kt_seq)
+                joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                g = nx.Graph(nx.random_clustered_graph(joint_deg_seq))  # Removes multilinks
+                # g = nx.random_clustered_graph(joint_deg_seq)
+
+            except nx.NetworkXError:
+                continue
+            else:
+                break
+        else:
+            # Does one more time, just to throw the exception again.
+            raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
+                                   "of a clustered graph.")
+
+        # remove_selfloops(g)
+        make_connex(g, n)
+
+        # Sets the name of the graph.
+        g.name = "Delta_clustered-config-model - n={:d}, " \
+                 "meank_t={:0.4f}, " \
+                 "kmin_t={:d}, " \
+                 "seed={}".format(n, meank_t, kmin_t, seed)
 
     # Type: Read from file (edgelist type).
     elif net_type == 'FILE':
@@ -376,4 +468,5 @@ def generate_layer_from_dict(input_dict, prefix):
 
 def average_degree(g):
     """Calculates the average degree of an undirected unweighted graph k."""
-    return sum(k for k in g.degree().values()) / len(g)
+    return 2 * len(g.edges()) / len(g)  # Much faster, dude!
+    # return sum(k for k in g.degree().values()) / len(g)
