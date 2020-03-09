@@ -133,9 +133,28 @@ def my_powerlaw_sequence(size, gamma, k_min=1, k_max=None):
     return np.random.choice(x_sample, size, p=p_sample)
 
 
+def my_poisson_sequence(size, nu, kmin=0):
+    # This prevents an (almost) infinite loop in the "while" bellow.
+    if nu < kmin:
+        raise ValueError("Hey, my_poisson_sequence can't have parameter nu = {} "
+                         "smaller than kmin = {}.".format(nu, kmin))
+
+    seq = np.random.poisson(nu, size)
+
+    # If kmin is greater than 0, the invalid values are redrawn from Poisson.
+    # This rescales the whole distribution.
+    if kmin > 0:
+        for i, a in enumerate(seq):
+            while seq[i] < kmin:
+                # Tries to replace by another valid Poisson number
+                seq[i] = np.random.poisson(nu)
+
+    return seq
+
+
 def make_sequence_even(deg_seq):
     """ Checks if the sum of a sequence of integers is even or odd.
-    If it is odd, adds one unity to a random element of the sequence.
+    If it is odd, adds one unit to a random element of the sequence.
 
     Parameters
     ----------
@@ -143,8 +162,17 @@ def make_sequence_even(deg_seq):
         Sequence of numbers. Changes are made in place.
     """
     if sum(deg_seq) % 2 == 1:
-        i = rnd.sample(range(len(deg_seq)), 1)
+        i = rnd.choice(range(len(deg_seq)))
         deg_seq[i] += 1
+
+
+def make_sequence_3multiple(deg_seq):
+    """Checks if the sum of a sequence is a multiple of 3 and, if not,
+    adds or subtracts one unit of a random element."""
+    # Chooses the number to add.
+    add_number = [0, -1, +1][sum(deg_seq) % 3]
+    i = rnd.choice(range(len(deg_seq)))
+    deg_seq[i] += add_number
 
 
 # Variable that stores all the possible network types and their
@@ -178,21 +206,27 @@ def generate_layer(net_type, size, **kwargs):
     Supported network types
     ----------
     'ER': Erdös-Renyi random graph G(n,p).
-        prefix+'_network_p' = probability for each edge.
+        prefix+'_p' = probability for each edge.
 
     'BA': Barabási-Albert model for scale free graph.
-        prefix+'_network_m' = m parameter. Number of edges to create for
+        prefix+'_m' = m parameter. Number of edges to create for
             each new node.
 
     'SF-CM': Scale-Free network, using configuration
         model.
-        prefix+'_network_gamma' = Exponent of the power law distribution
-        prefix+'_network_kmin' = Minimum degree of each node.
+        prefix+'_gamma' = Exponent of the power law distribution
+        prefix+'_k_min' = Minimum degree of each node.
+
+    'clustered-poisson': clustered network with poisson dergee distributions,
+        using the extended configuration model proposed by Newman 2009 and
+        Miller 2009 (independently). Check nx.random_clustered for more info.
+        prefix+''
 
     'FILE': Network read from a file, saved as 'edgelist' standard (see
         networkx.write_edgelist function).
-        prefix+'_network_path' = Path of the file with the edgelist
-        network.
+        prefix+'_meank_i' = Independent average degree - that of regular config. model.
+        prefix+'_meank_t' = Triangles average degree - that of triadic config. model.
+        prefix+'_k_min' = minimum *independent* degree. Triangle min degree is set to zero.
     """
     # Gets the size, the network type and the seed from input dict
     n = size
@@ -260,6 +294,38 @@ def generate_layer(net_type, size, **kwargs):
                  "gamma={:0.3f}, " \
                  "k_min={:d}, " \
                  "seed={}".format(n, gamma, k_min, seed)
+
+    # Type: Miller/Newman (2009) model for clustered networks.
+    elif net_type == "clustered-poisson":
+
+        # Average independent and triangle degrees
+        meank_i = float(kwargs["meank_i"])
+        meank_t = float(kwargs["meank_t"])
+
+        # Sets the seed.
+        try:
+            seed = int(kwargs['seed'])
+            rnd.seed(seed)
+        except KeyError:
+            seed = None
+
+        # Minimum independent degree
+        # The triangle degree has no min, i.e., it is zero.
+        try:
+            kmin_i = int(kwargs["k_min"])
+        except KeyError:
+            kmin_i = 0
+
+        # Generates the joint degree sequence
+        ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
+        kt_seq = my_poisson_sequence(n, meank_t)
+        make_sequence_even(ki_seq)
+        make_sequence_3multiple(kt_seq)
+        joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+        g = nx.random_clustered_graph(joint_deg_seq)
+        remove_selfloops(g)
+        make_connex(g, n)
 
     # Type: Read from file (edgelist type).
     elif net_type == 'FILE':
