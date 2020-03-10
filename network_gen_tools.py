@@ -10,6 +10,7 @@ Author: Paulo Cesar Ventura da Silva.
 import networkx as nx
 import random as rnd
 import numpy as np
+from toolbox.file_tools import read_optional_from_dict
 
 
 def remove_selfloops(g):
@@ -294,12 +295,17 @@ def generate_layer(net_type, size, **kwargs):
                  "k_min={:d}, " \
                  "seed={}".format(n, gamma, k_min, seed)
 
-    # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
-    elif net_type == "clustered-poisson":
+    elif net_type == "poisson-CM":
+        # Implement and test: does it give something different from ER??
+        raise NotImplementedError
 
-        # Average independent and triangle degrees
-        meank_i = float(kwargs["meank_i"])
-        meank_t = float(kwargs["meank_t"])
+    elif net_type == "delta-CM":
+        raise NotImplementedError
+
+    # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
+    # This is a class of models that contain "clustered" in the name. Specific implementation
+    # are setup inside this block.
+    elif "clustered" in net_type:
 
         # Sets the seed.
         try:
@@ -308,116 +314,88 @@ def generate_layer(net_type, size, **kwargs):
         except KeyError:
             seed = None
 
-        # Minimum independent degree
-        # The triangle degree has no min, i.e., it is zero.
-        try:
-            kmin_i = int(kwargs["k_min"])
-        except KeyError:
-            kmin_i = 0
+        # Minimum independent and triangle degrees
+        kmin_i = read_optional_from_dict(kwargs, "k_min", standard_val=0)
+        kmin_t = read_optional_from_dict(kwargs, "kt_min", standard_val=0)
 
-        # Creates the degree sequence and then the graph.
-        # As the nx generator sometimes produces an error even with valid
-        # sequences, we simply try again if that happens. If it happens
-        # consistently, then the error is actually raised.
-        for i_try in range(5):
-            try:
-                # Generates the joint degree sequence
+        # --------------
+        # Clustered models
+        if net_type == "clustered-poisson":
+            # Average independent and triangle degrees
+            meank_i = float(kwargs["meank_i"])
+            meank_t = float(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (independent Poissons)
                 ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
                 kt_seq = my_poisson_sequence(n, meank_t)
                 make_sequence_even(ki_seq)
                 make_sequence_3multiple(kt_seq)
                 joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
 
-                g = nx.Graph(nx.random_clustered_graph(joint_deg_seq))  # Removes multilinks
-                # g = nx.random_clustered_graph(joint_deg_seq)
+                return nx.Graph(nx.random_clustered_graph(joint_deg_seq))
 
-            except nx.NetworkXError:
-                continue
-            else:
-                break
-        else:
-            # Does one more time, just to throw the exception again.
-            raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
-                                   "of a clustered graph.")
+        elif net_type == "clustered-delta":
+            # Average independent and triangle degrees
+            # meank_i = float(kwargs["meank_i"])
+            meank_t = int(kwargs["meank_t"])
 
-        # remove_selfloops(g)
-        make_connex(g, n)
-
-        # Sets the name of the graph.
-        g.name = "Poisson_clustered-config-model - n={:d}, " \
-                 "meank_i={:0.4f}, " \
-                 "meank_t={:0.4f}, " \
-                 "kmin_i={:d}, " \
-                 "seed={}".format(n, meank_i, meank_t, kmin_i, seed)
-
-        # TODO
-        # # Debug section.
-        # # ISSUE: Clustering/transit. is smaller than expected, and also depends on network size (shouldn't).
-        # print("-----\nDebug\n-----")
-        # # # Checks sum of all degrees
-        # # print((sum(ki_seq) + 2*sum(kt_seq))/n)
-        # # print(average_degree(g))
-        # for i in range(n):
-        #     print(g.degree(i), end="\t")
-        #     print(ki_seq[i] + 2*kt_seq[i])
-        #
-        # print("-----")
-
-    # Type: Miller/Newman (2009) model for clustered networks, with delta distribution for
-    # the triangles.
-    elif net_type == "clustered-delta":
-
-        # Average independent and triangle degrees
-        # meank_i = float(kwargs["meank_i"])
-        meank_t = float(kwargs["meank_t"])
-
-        # Sets the seed.
-        try:
-            seed = int(kwargs['seed'])
-            rnd.seed(seed)
-        except KeyError:
-            seed = None
-
-        # Minimum independent degree
-        # The triangle degree has no min, i.e., it is zero.
-        try:
-            kmin_t = int(kwargs["k_min"])
-        except KeyError:
-            kmin_t = 0
-
-        # Creates the degree sequence and then the graph.
-        # As the nx generator sometimes produces an error even with valid
-        # sequences, we simply try again if that happens. If it happens
-        # consistently, then the error is actually raised.
-        for i_try in range(5):
-            try:
-                # Generates the joint degree sequence
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
                 ki_seq = [0] * n
-                kt_seq = my_poisson_sequence(n, meank_t, kmin=kmin_t)
-                # make_sequence_even(ki_seq)
+                kt_seq = [meank_t] * n
                 make_sequence_3multiple(kt_seq)
                 joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
 
-                g = nx.Graph(nx.random_clustered_graph(joint_deg_seq))  # Removes multilinks
-                # g = nx.random_clustered_graph(joint_deg_seq)
+                return nx.Graph(nx.random_clustered_graph(joint_deg_seq))
+
+        # -------------
+        # Unclustered (null) model
+        elif net_type == "unclustered-poisson":
+            # TODO WARNING: it is not simply do 2 * meank_t.
+            # Multiply the whole array by 2.
+            raise NotImplementedError
+
+        elif net_type == "unclustered-delta":
+            # Average triangle degree
+            meank_t = int(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
+                ki_seq = [0] * n
+                kt_seq = [2 * meank_t] * n
+                # make_sequence_even(kt_seq)  # Not necessary here.
+                # joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                g = nx.configuration_model(ki_seq)
+                g.add_edges_from(nx.configuration_model(kt_seq).edges())
+                return nx.Graph(g)
+
+        else:
+            raise KeyError("Network type '{}' not recognized!".
+                           format(net_type))
+
+
+        # -------------
+        # Actual generation process with weird exception handling
+        for i_try in range(5):
+            try:
+                g = generate()
 
             except nx.NetworkXError:
                 continue
             else:
                 break
         else:
-            # Does one more time, just to throw the exception again.
             raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
                                    "of a clustered graph.")
 
-        # remove_selfloops(g)
+        remove_selfloops(g)
         make_connex(g, n)
 
         # Sets the name of the graph.
-        g.name = "Delta_clustered-config-model - n={:d}, " \
-                 "meank_t={:0.4f}, " \
-                 "kmin_t={:d}, " \
-                 "seed={}".format(n, meank_t, kmin_t, seed)
+        g.name = "{}-config-model - n={:d}, " \
+                 "seed={}".format(net_type, n, meank_t, kmin_t, seed)
 
     # Type: Read from file (edgelist type).
     elif net_type == 'FILE':
