@@ -324,7 +324,31 @@ def generate_layer(net_type, size, **kwargs):
         raise NotImplementedError
 
     elif net_type == "delta-CM":
-        raise NotImplementedError
+        # The regular degree value
+        k = int(kwargs["k"])
+
+        # Sets the seed
+        try:
+            seed = int(kwargs['seed'])
+            rnd.seed(seed)
+        except KeyError:
+            seed = None
+
+        # Generates a regular sequence of node degrees.
+        deg_seq = n * [k]
+        make_sequence_even(deg_seq)  # Instead, a good value should be informed
+
+        # Generates the graph from the power law sequence.
+        g = nx.Graph(nx.configuration_model(deg_seq))
+
+        # Tries to make the graph connex. May fail depending on the
+        # graph itself. In this case, try other seeds.
+        make_connex(g, n)
+
+        # Sets the name of the graph.
+        g.name = "Delta_configuration-model - n={:d}, " \
+                 "k={:d}, " \
+                 "seed={:d}".format(n, k, seed)
 
     # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
     # This is a class of models that contain "clustered" in the name. Specific implementation
