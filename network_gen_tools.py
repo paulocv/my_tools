@@ -348,7 +348,7 @@ def generate_layer(net_type, size, **kwargs):
         # Sets the name of the graph.
         g.name = "Delta_configuration-model - n={:d}, " \
                  "k={:d}, " \
-                 "seed={:d}".format(n, k, seed)
+                 "seed={}".format(n, k, seed)
 
     # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
     # This is a class of models that contain "clustered" in the name. Specific implementation
