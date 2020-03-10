@@ -22,6 +22,11 @@ def remove_selfloops(g):
     g.remove_edges_from(g.selfloop_edges())
 
 
+def remove_isolates(g):
+    """Removes isolated nodes, i.e., nodes with degree zero."""
+    g.remove_nodes_from(nx.isolates(g))
+
+
 def make_connex(g, max_steps=None):
     """ Modifies the edges of a graph to make it fully connex, without
     changing the degrees of the nodes. Changes are performed in place.
@@ -133,6 +138,25 @@ def my_powerlaw_sequence(size, gamma, k_min=1, k_max=None):
 
 
 def my_poisson_sequence(size, nu, kmin=0):
+    """ Generates a sequence of integers with Poisson probability
+    distribution, with adjustable minimum value.
+
+    P(k) = exp(-nu) * nu**k / k!
+
+    Parameters
+    ----------
+    size : int
+        Size of the sample (number of elements in the sequence).
+    nu : float
+        Poisson parameter, which is the expected average.
+    kmin : int
+        Minimum value of the sequence elements.
+        After a regular Poisson array generation, numbers are checked
+        and those which are bellow kmin are redrawn. Thus the final
+        probability distribution, though still Poisson-shaped, is
+        renormalized.
+
+    """
     # This prevents an (almost) infinite loop in the "while" bellow.
     if nu < kmin:
         raise ValueError("Hey, my_poisson_sequence can't have parameter nu = {} "
@@ -352,9 +376,21 @@ def generate_layer(net_type, size, **kwargs):
         # -------------
         # Unclustered (null) model
         elif net_type == "unclustered-poisson":
-            # TODO WARNING: it is not simply do 2 * meank_t.
-            # Multiply the whole array by 2.
-            raise NotImplementedError
+            # Average triangle degree
+            meank_i = float(kwargs["meank_i"])
+            meank_t = float(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
+                ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
+                kt_seq = 2 * my_poisson_sequence(n, meank_t)
+                make_sequence_even(ki_seq)
+                # joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                # Double call to config model, for "red" and "blue" degrees.
+                graph = nx.configuration_model(ki_seq)
+                graph.add_edges_from(nx.configuration_model(kt_seq).edges())
+                return nx.Graph(graph)
 
         elif net_type == "unclustered-delta":
             # Average triangle degree
@@ -367,14 +403,13 @@ def generate_layer(net_type, size, **kwargs):
                 # make_sequence_even(kt_seq)  # Not necessary here.
                 # joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
 
-                g = nx.configuration_model(ki_seq)
-                g.add_edges_from(nx.configuration_model(kt_seq).edges())
-                return nx.Graph(g)
+                graph = nx.configuration_model(ki_seq)
+                graph.add_edges_from(nx.configuration_model(kt_seq).edges())
+                return nx.Graph(graph)
 
         else:
             raise KeyError("Network type '{}' not recognized!".
                            format(net_type))
-
 
         # -------------
         # Actual generation process with weird exception handling
@@ -390,7 +425,11 @@ def generate_layer(net_type, size, **kwargs):
             raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
                                    "of a clustered graph.")
 
+        # Removal of undesired features. The order of operations is important.
+
         remove_selfloops(g)
+        # Optional and dangerous: removes isolated nodes
+        # remove_isolates(g)
         make_connex(g, n)
 
         # Sets the name of the graph.
