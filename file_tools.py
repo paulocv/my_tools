@@ -172,6 +172,26 @@ def str_to_bool(string, truelist=None):
     return string in truelist
 
 
+def str_to_dict(string, key_name=""):
+    """Evaluates a string as a dict. Checks if border characters are
+    '{' and '}', to avoid bad typing.
+
+    key_name : string (optional)
+        Name of the parameter. Useful for error message.
+
+    Future idea: Actually split the string and eval according to types.
+    """
+    if string[0] == '{' and string[-1] == '}':
+        d = eval(string)
+        if type(d) is not dict:
+            raise TypeError("Hey, could not interpret this as a dict: \n"
+                            "'{}'".format(d))
+    else:
+        raise ValueError("Hey, bad parameter or tuple of parameters"
+                         " in {} = {}".format(key_name,
+                                              string))
+
+
 def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
     """Returns a boolean read from a string at an input dictionary.
     True if the string belongs to 'truelist', false otherwise.
