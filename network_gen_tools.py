@@ -10,7 +10,8 @@ Author: Paulo Cesar Ventura da Silva.
 import networkx as nx
 import random as rnd
 import numpy as np
-from toolbox.file_tools import read_optional_from_dict
+import pandas as pd
+from toolbox.file_tools import read_optional_from_dict, list_to_csv
 
 
 def remove_selfloops(g):
@@ -511,3 +512,135 @@ def average_degree(g):
     """Calculates the average degree of an undirected unweighted graph k."""
     return 2 * len(g.edges()) / len(g)  # Much faster, dude!
     # return sum(k for k in g.degree().values()) / len(g)
+
+
+# ---------------------------------------------
+# File IO operations with complete network data
+# ---------------------------------------------
+
+# def save_nodes_with_data(g, file_path, which_data=None, sep=" ", write_header=True):
+#     """Exports the list of nodes in a network, including some
+#     attributes (which can be specified as list in "which_data". If not informed,
+#     all data is used.)
+#     """
+#     result = ""
+#
+#     # File header
+#     if write_header:
+#         result = "# node" + sep
+#         if which_data is None:
+#             result += "data\n"
+#         else:
+#             result += str(which_data) + "\n"
+#     # Node and Data
+#     for ni, data in g.nodes(data=True):
+#         result += str(ni) + " "
+#
+#         if which_data is None:
+#             # Exports the data dict, as it is
+#             result += str(data)
+#         else:
+#             result += str(data[which_data])
+#
+#         result += "\n"
+#
+#     result = result[:-1]  # Removes last newline char
+#
+#     # Writes file
+#     with open(file_path, "w") as fp:
+#         fp.write(result)
+
+
+def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attrs=None,
+                           sep=";", nodes=None, write_header=True, float_format=None,
+                           comments="#"
+                           ):
+    """ Saves network links and nodes data into two files.
+    Node data are those specified in attr_names, and expected to be present
+    in all nodes. If attr_names is not informed, they are deduced from the
+    first node in network.
+
+    Node data is written using pandas DataFrame.to_csv function.
+    Edge data is written using nx.write_edgelist.
+
+    Parameters
+    ----------
+    g : nx.Graph, nx.DiGraph
+    nodes_file : str
+        Path to the file with node data.
+    edges_file : str
+        Path to the file with edges and their data.
+    node_attrs : any iterable
+        Node attributes to be exported. Must be present in all nodes, no missing
+        data handling here.
+        If not informed, it is guessed from first node.
+    edge_attrs : any iterable
+        Edge attribute names to be exported. Must be present in all edges.
+        If not informed, all data is exported, but using a dict format instead of
+        tabular shape.
+    sep : str
+        Data separator to use.
+    nodes : any iterable
+        Specify the nodes to be exported. Can also be used to determine their
+        order (otherwise, g.nodes() is used).
+    write_header : bool
+    float_format : str
+        Formating string for floating points.
+    comments : str
+        Comment indicator
+    """
+    if node_attrs is None:
+        node_attrs = g.nodes()[0].keys()
+
+    if nodes is None:
+        nodes = g.nodes()
+
+    # --------------
+    # Node data file export
+
+    nodes_data = {key: [] for key in node_attrs}
+    for ni in nodes:
+        for key in node_attrs:
+            nodes_data[key].append(g.nodes[ni][key])
+
+    pd.DataFrame(nodes_data, index=nodes).to_csv(
+        nodes_file, sep=sep, float_format=float_format, header=write_header,
+        index_label="node"
+    )
+
+    # --------------
+    # Edge data file export
+    if edge_attrs is None:
+        edge_attrs = True
+        edge_str = ""
+    else:
+        edge_str = list_to_csv(edge_attrs, sep=sep)
+
+    edgl = nx.generate_edgelist(g, delimiter=sep, data=edge_attrs)
+
+    with open(edges_file, "w") as fp:
+        if write_header:
+            fp.write(comments + " u{}v{}{}\n".format(sep, sep, edge_str))
+        for line in edgl:
+            fp.write(line + "\n")
+
+
+def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodetype=int,
+                           sep=";", edgel_has_header=True, edge_attrs=None,
+                           comments="#", id_col_name="node"):
+    """TODO DOCSTRINGS"""
+    # --------------------
+    # Loads node data
+    node_dict = pd.read_csv(nodes_file, sep=sep, index_col=None, comment=comments).to_dict(orient="list")
+
+    # --------------------
+    # Loads edge data
+    if edgel_has_header:
+        with open(edges_file, "r") as fp:
+            line = fp.readline().strip(comments).strip().split(sep)
+
+        edge_attrs = line[2:]
+        if edge_attrs == [""]:
+            pass
+        # TODO BE CONTINUED... too tired today
+    nx.read_edgelist(edges_file, create_using=create_using)
