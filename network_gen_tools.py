@@ -311,3 +311,13 @@ def generate_layer_from_dict(input_dict, prefix):
 def average_degree(g):
     """Calculates the average degree of an undirected unweighted graph k."""
     return sum(k for k in g.degree().values()) / len(g)
+
+
+def save_network_with_nodedata(nodes_file, edges_file):
+    pass
+
+
+def load_network_with_nodedata(nodes_file, edges_file):
+    pass
+
+
