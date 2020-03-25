@@ -10,6 +10,7 @@ Author: Paulo Cesar Ventura da Silva.
 import networkx as nx
 import random as rnd
 import numpy as np
+from toolbox.file_tools import read_optional_from_dict
 
 
 def remove_selfloops(g):
@@ -18,9 +19,12 @@ def remove_selfloops(g):
 
     :param g:(nx graph, digraph, etc) the graph.
     """
-    nodes = g.nodes_with_selfloops()
-    ebunch = [(ni, ni) for ni in nodes]
-    g.remove_edges_from(ebunch)
+    g.remove_edges_from(g.selfloop_edges())
+
+
+def remove_isolates(g):
+    """Removes isolated nodes, i.e., nodes with degree zero."""
+    g.remove_nodes_from(nx.isolates(g))
 
 
 def make_connex(g, max_steps=None):
@@ -59,10 +63,10 @@ def make_connex(g, max_steps=None):
         small = rnd.sample(components[1:], 1)[0]
 
         # Gets two connected nodes in each component
-        n1_giant = rnd.sample(giant, 1)[0]
-        n2_giant = rnd.sample(list(g.neighbors(n1_giant)), 1)[0]
-        n1_small = rnd.sample(small, 1)[0]
-        n2_small = rnd.sample(list(g.neighbors(n1_small)), 1)[0]
+        n1_giant = rnd.choice(giant)
+        n2_giant = rnd.choice(list(g.neighbors(n1_giant)))
+        n1_small = rnd.choice(small)
+        n2_small = rnd.choice(list(g.neighbors(n1_small)))
         # n1_giant = rnd.sample(giant, 1)[0]
         # n2_giant = rnd.sample(g.neighbors(n1_giant), 1)[0]
         # n1_small = rnd.sample(small, 1)[0]
@@ -133,9 +137,47 @@ def my_powerlaw_sequence(size, gamma, k_min=1, k_max=None):
     return np.random.choice(x_sample, size, p=p_sample)
 
 
+def my_poisson_sequence(size, nu, kmin=0):
+    """ Generates a sequence of integers with Poisson probability
+    distribution, with adjustable minimum value.
+
+    P(k) = exp(-nu) * nu**k / k!
+
+    Parameters
+    ----------
+    size : int
+        Size of the sample (number of elements in the sequence).
+    nu : float
+        Poisson parameter, which is the expected average.
+    kmin : int
+        Minimum value of the sequence elements.
+        After a regular Poisson array generation, numbers are checked
+        and those which are bellow kmin are redrawn. Thus the final
+        probability distribution, though still Poisson-shaped, is
+        renormalized.
+
+    """
+    # This prevents an (almost) infinite loop in the "while" bellow.
+    if nu < kmin:
+        raise ValueError("Hey, my_poisson_sequence can't have parameter nu = {} "
+                         "smaller than kmin = {}.".format(nu, kmin))
+
+    seq = np.random.poisson(nu, size)
+
+    # If kmin is greater than 0, the invalid values are redrawn from Poisson.
+    # This rescales the whole distribution.
+    if kmin > 0:
+        for i, a in enumerate(seq):
+            while seq[i] < kmin:  # Inifinite loops prevented by nu >= kmin
+                # Tries to replace by another valid Poisson number
+                seq[i] = np.random.poisson(nu)
+
+    return seq
+
+
 def make_sequence_even(deg_seq):
     """ Checks if the sum of a sequence of integers is even or odd.
-    If it is odd, adds one unity to a random element of the sequence.
+    If it is odd, adds one unit to a random element of the sequence.
 
     Parameters
     ----------
@@ -143,8 +185,17 @@ def make_sequence_even(deg_seq):
         Sequence of numbers. Changes are made in place.
     """
     if sum(deg_seq) % 2 == 1:
-        i = rnd.sample(range(len(deg_seq)), 1)
+        i = rnd.choice(range(len(deg_seq)))
         deg_seq[i] += 1
+
+
+def make_sequence_3multiple(deg_seq):
+    """Checks if the sum of a sequence is a multiple of 3 and, if not,
+    adds or subtracts one unit of a random element."""
+    # Chooses the number to add.
+    add_number = [0, -1, +1][sum(deg_seq) % 3]
+    i = rnd.choice(range(len(deg_seq)))
+    deg_seq[i] += add_number
 
 
 # Variable that stores all the possible network types and their
@@ -154,6 +205,7 @@ layer_keyword_dict['ER'] = ['p', 'seed']
 layer_keyword_dict['BA'] = ['m', 'seed']
 layer_keyword_dict['SF-CM'] = ['gamma', 'k_min', 'seed']
 layer_keyword_dict['FILE'] = ['path']
+layer_keyword_dict['clustered-poisson'] = ['meank_i', 'meank_t', 'k_min']
 
 
 def generate_layer(net_type, size, **kwargs):
@@ -178,21 +230,27 @@ def generate_layer(net_type, size, **kwargs):
     Supported network types
     ----------
     'ER': Erdös-Renyi random graph G(n,p).
-        prefix+'_network_p' = probability for each edge.
+        prefix+'_p' = probability for each edge.
 
     'BA': Barabási-Albert model for scale free graph.
-        prefix+'_network_m' = m parameter. Number of edges to create for
+        prefix+'_m' = m parameter. Number of edges to create for
             each new node.
 
     'SF-CM': Scale-Free network, using configuration
         model.
-        prefix+'_network_gamma' = Exponent of the power law distribution
-        prefix+'_network_kmin' = Minimum degree of each node.
+        prefix+'_gamma' = Exponent of the power law distribution
+        prefix+'_k_min' = Minimum degree of each node.
+
+    'clustered-poisson': clustered network with poisson dergee distributions,
+        using the extended configuration model proposed by Newman 2009 and
+        Miller 2009 (independently). Check nx.random_clustered for more info.
+        prefix+''
 
     'FILE': Network read from a file, saved as 'edgelist' standard (see
         networkx.write_edgelist function).
-        prefix+'_network_path' = Path of the file with the edgelist
-        network.
+        prefix+'_meank_i' = Independent average degree - that of regular config. model.
+        prefix+'_meank_t' = Triangles average degree - that of triadic config. model.
+        prefix+'_k_min' = minimum *independent* degree. Triangle min degree is set to zero.
     """
     # Gets the size, the network type and the seed from input dict
     n = size
@@ -249,7 +307,7 @@ def generate_layer(net_type, size, **kwargs):
 
         # Generates the graph from the power law sequence.
         g = nx.Graph(nx.configuration_model(deg_seq))
-        remove_selfloops(g)
+        # remove_selfloops(g)  # Does externally
 
         # Tries to make the graph connex. May fail depending on the
         # graph itself. In this case, try other seeds.
@@ -260,6 +318,147 @@ def generate_layer(net_type, size, **kwargs):
                  "gamma={:0.3f}, " \
                  "k_min={:d}, " \
                  "seed={}".format(n, gamma, k_min, seed)
+
+    elif net_type == "poisson-CM":
+        # Implement and test: does it give something different from ER??
+        raise NotImplementedError
+
+    elif net_type == "delta-CM":
+        # The regular degree value
+        k = int(kwargs["k"])
+
+        # Sets the seed
+        try:
+            seed = int(kwargs['seed'])
+            rnd.seed(seed)
+        except KeyError:
+            seed = None
+
+        # Generates a regular sequence of node degrees.
+        deg_seq = n * [k]
+        make_sequence_even(deg_seq)  # Instead, a good value should be informed
+
+        # Generates the graph from the power law sequence.
+        g = nx.Graph(nx.configuration_model(deg_seq))
+
+        # Tries to make the graph connex. May fail depending on the
+        # graph itself. In this case, try other seeds.
+        make_connex(g, n)
+
+        # Sets the name of the graph.
+        g.name = "Delta_configuration-model - n={:d}, " \
+                 "k={:d}, " \
+                 "seed={}".format(n, k, seed)
+
+    # Type: Miller/Newman (2009) model for clustered networks, using independent poisson.
+    # This is a class of models that contain "clustered" in the name. Specific implementation
+    # are setup inside this block.
+    elif "clustered" in net_type:
+
+        # Sets the seed.
+        try:
+            seed = int(kwargs['seed'])
+            rnd.seed(seed)
+        except KeyError:
+            seed = None
+
+        # Minimum independent and triangle degrees
+        kmin_i = read_optional_from_dict(kwargs, "k_min", standard_val=0)
+        kmin_t = read_optional_from_dict(kwargs, "kt_min", standard_val=0)
+
+        # --------------
+        # Clustered models
+        if net_type == "clustered-poisson":
+            # Average independent and triangle degrees
+            meank_i = float(kwargs["meank_i"])
+            meank_t = float(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (independent Poissons)
+                ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
+                kt_seq = my_poisson_sequence(n, meank_t)
+                make_sequence_even(ki_seq)
+                make_sequence_3multiple(kt_seq)
+                joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                return nx.Graph(nx.random_clustered_graph(joint_deg_seq))
+
+        elif net_type == "clustered-delta":
+            # Average independent and triangle degrees
+            # meank_i = float(kwargs["meank_i"])
+            meank_t = int(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
+                ki_seq = [0] * n
+                kt_seq = [meank_t] * n
+                make_sequence_3multiple(kt_seq)
+                joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                return nx.Graph(nx.random_clustered_graph(joint_deg_seq))
+
+        # -------------
+        # Unclustered (null) model
+        elif net_type == "unclustered-poisson":
+            # Average triangle degree
+            meank_i = float(kwargs["meank_i"])
+            meank_t = float(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
+                ki_seq = my_poisson_sequence(n, meank_i, kmin_i)
+                kt_seq = 2 * my_poisson_sequence(n, meank_t)
+                make_sequence_even(ki_seq)
+                # joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                # Double call to config model, for "red" and "blue" degrees.
+                graph = nx.configuration_model(ki_seq)
+                graph.add_edges_from(nx.configuration_model(kt_seq).edges())
+                return nx.Graph(graph)
+
+        elif net_type == "unclustered-delta":
+            # Average triangle degree
+            meank_t = int(kwargs["meank_t"])
+
+            def generate():
+                # Generates the joint degree sequence (Zero for i and delta for t)
+                ki_seq = [0] * n
+                kt_seq = [2 * meank_t] * n
+                # make_sequence_even(kt_seq)  # Not necessary here.
+                # joint_deg_seq = [(ki, kt) for ki, kt in zip(ki_seq, kt_seq)]
+
+                graph = nx.configuration_model(ki_seq)
+                graph.add_edges_from(nx.configuration_model(kt_seq).edges())
+                return nx.Graph(graph)
+
+        else:
+            raise KeyError("Network type '{}' not recognized!".
+                           format(net_type))
+
+        # -------------
+        # Actual generation process with weird exception handling
+        for i_try in range(5):
+            try:
+                g = generate()
+
+            except nx.NetworkXError:
+                continue
+            else:
+                break
+        else:
+            raise nx.NetworkXError("Hey, an nx error is being produced at the generation "
+                                   "of a clustered graph.")
+
+        # Removal of undesired features. The order of operations is important.
+
+        remove_selfloops(g)
+        # Optional and dangerous: removes isolated nodes
+        # remove_isolates(g)
+        make_connex(g, n)
+
+        # Sets the name of the graph.
+        g.name = "{}-config-model - n={:d}, " \
+                 "seed={}".format(net_type, n, meank_t, kmin_t, seed)
 
     # Type: Read from file (edgelist type).
     elif net_type == 'FILE':
@@ -310,14 +509,5 @@ def generate_layer_from_dict(input_dict, prefix):
 
 def average_degree(g):
     """Calculates the average degree of an undirected unweighted graph k."""
-    return sum(k for k in g.degree().values()) / len(g)
-
-
-def save_network_with_nodedata(nodes_file, edges_file):
-    pass
-
-
-def load_network_with_nodedata(nodes_file, edges_file):
-    pass
-
-
+    return 2 * len(g.edges()) / len(g)  # Much faster, dude!
+    # return sum(k for k in g.degree().values()) / len(g)
