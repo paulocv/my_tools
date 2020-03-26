@@ -190,6 +190,7 @@ def str_to_dict(string, key_name=""):
         raise ValueError("Hey, bad parameter or tuple of parameters"
                          " in {} = {}".format(key_name,
                                               string))
+    return d
 
 
 def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
