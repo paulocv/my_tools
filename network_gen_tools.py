@@ -20,7 +20,8 @@ def remove_selfloops(g):
 
     :param g:(nx graph, digraph, etc) the graph.
     """
-    g.remove_edges_from(g.selfloop_edges())
+    g.remove_edges_from(nx.selfloop_edges(g))  # Networkx 2.4
+    # g.remove_edges_from(g.selfloop_edges())  # Networkx 1.10
 
 
 def remove_isolates(g):
@@ -40,7 +41,6 @@ def make_connex(g, max_steps=None):
         Maximum rewiring trials until connex. If not informed, the
         number of trials is unlimited.
     """
-
     # Defines a counter increment function.
     # If max_steps is "infinity", the counter is not incremented.
     if max_steps is None:
@@ -52,7 +52,7 @@ def make_connex(g, max_steps=None):
             return n+1
 
     # Extracts graph components and sorts by size
-    components = sorted(nx.connected_components(g), key=len,
+    components = sorted(list(nx.connected_components(g)), key=len,
                         reverse=True)
 
     # Main loop. Terminates if the graph has a single component, or if
