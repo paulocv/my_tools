@@ -630,24 +630,24 @@ def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attr
 
 
 def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodetype=None,
-                           datatype=float, sep=";",
+                           edge_datatype=float, sep=";",
                            edgel_has_header=True, edgel_has_data=True, edge_attrs=None,
                            edge_data_is_dict=False,
                            comments="#", node_col_name="node"):
     """
-    Comment must have one character
-    TODO DOCSTRINGS"""
+    Comment must have only one character
+    TODO DOCSTRINGS
+    """
     # --------------------
-    # Loads node data
-    node_dict = pd.read_csv(nodes_file, sep=sep, index_col=None, comment=comments).to_dict(orient="list")
+    # Loads node data, as a dict keyed by nodes and valued by attr dicts
+    node_dict = pd.read_csv(nodes_file, sep=sep, index_col=node_col_name,
+                            comment=comments).to_dict(orient="index")
 
-    # Converts node dtype
-    nodes = node_dict.pop(node_col_name)
+    # Converts the node to required type and produces a container to g.add_nodes_from
     if nodetype is None:
-        # Deduces from first node
-        nodetype = type(nodes[0])
+        node_container = [(ni, attr) for ni, attr in node_dict.items()]
     else:
-        nodes = list(map(nodetype, nodes))
+        node_container = [(nodetype(ni), attr) for ni, attr in node_dict.items()]
 
     # --------------------
     # Loads edge data
@@ -670,23 +670,17 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
         edge_attrs = []
         # num_attrs = 0
 
-    # ;;;
+    # -----------------------------
+    # Creates the graph with node data
+    # - Manual data reading, due to lack of options in nx.read_edgelist.
+
     # Basic idea: if not has_data, ignores everything. If has data and header,
     # either reads from header or from the edge_attrs argument, which has priority.
     # However, if edge_data_is_dict, ignores the read attributes and parses the
     # dict instead.
 
-    # -----------------------------
-    # Creates the graph with node data
-
     g = create_using()
-    for i, ni in enumerate(nodes):
-        g.add_node(ni)
-        for key, vals in node_dict.items():
-            g.nodes[ni][key] = vals[i]
-    # The above can be optimized by converting node DataFrame as:
-    # pd.DataFrame.to_dict(orient="index")
-    # and then using g.add_nodes_from(node, **attrs)
+    g.add_nodes_from(node_container)  # Adds nodes before edges
 
     for line in edge_contents:
         # Ignores line if first char is comment.
@@ -699,22 +693,118 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
         ni = nodetype(line[0])
         nj = nodetype(line[1])
 
-        # Checks if nodes are in graph, otherwise nx would add them
+        # Nodes must be already in the graph.
         if ni not in g or nj not in g:
             raise ValueError("Hey, edge ({}, {}) contains nodes not in "
                              "the node data".format(ni, nj))
 
         # Reads the edge data
         if edgel_has_data:
+            # Chooses between a dictionary with all data in each edge, or a csv format.
             if edge_data_is_dict:
                 edata = str_to_dict(line[2])
+            elif edge_datatype is None:
+                edata = {key: val for key, val in zip(edge_attrs, line[2:])}
             else:
-                edata = {key: datatype(val) for key, val in zip(edge_attrs, line[2:])}
+                edata = {key: edge_datatype(val) for key, val in zip(edge_attrs, line[2:])}
 
-            # Includes edge
+            # Includes edge in graph.
             g.add_edge(ni, nj, **edata)
 
         else:
+            # Includes edge with no data at all.
             g.add_edge(ni, nj)
 
     return g
+
+# BACKUP: apagar
+# def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodetype=None,
+#                            datatype=float, sep=";",
+#                            edgel_has_header=True, edgel_has_data=True, edge_attrs=None,
+#                            edge_data_is_dict=False,
+#                            comments="#", node_col_name="node"):
+#     """
+#     Comment must have one character
+#     # --------------------
+#     # Loads node data
+#     node_dict = pd.read_csv(nodes_file, sep=sep, index_col=None,
+#                             comment=comments).to_dict(orient="list")
+#
+#     # Converts node dtype
+#     nodes = node_dict.pop(node_col_name)
+#     if nodetype is None:
+#         # Deduces from first node
+#         nodetype = type(nodes[0])
+#     else:
+#         nodes = list(map(nodetype, nodes))
+#
+#     # --------------------
+#     # Loads edge data
+#
+#     # Reads whole file content
+#     with open(edges_file, "r") as fp:
+#         edge_contents = fp.readlines()
+#
+#     # Edge data and name handling.
+#     if edgel_has_data:
+#         # Gets attribute names from header, if not informed
+#         if edgel_has_header and edge_attrs is None:
+#             # Pops the first line and process it
+#             header = edge_contents.pop(0).strip(comments).strip().split(sep)
+#             edge_attrs = header[2:]
+#
+#         # num_attrs = len(edge_attrs)
+#
+#     else:
+#         edge_attrs = []
+#         # num_attrs = 0
+#
+#     # ;;;
+#     # Basic idea: if not has_data, ignores everything. If has data and header,
+#     # either reads from header or from the edge_attrs argument, which has priority.
+#     # However, if edge_data_is_dict, ignores the read attributes and parses the
+#     # dict instead.
+#
+#     # -----------------------------
+#     # Creates the graph with node data
+#
+#     g = create_using()
+#     for i, ni in enumerate(nodes):
+#         g.add_node(ni)
+#         for key, vals in node_dict.items():
+#             g.nodes[ni][key] = vals[i]
+#     # The above can be optimized by converting node DataFrame as:
+#     # pd.DataFrame.to_dict(orient="index")
+#     # and then using g.add_nodes_from(nodes, **attrs)
+#
+#     for line in edge_contents:
+#         # Ignores line if first char is comment.
+#         if line[0] == comments:
+#             continue
+#         # Removes comments, whitespaces and splits in data
+#         line = line.split(comments)[0].strip().split(sep)
+#
+#         # Reads the nodes
+#         ni = nodetype(line[0])
+#         nj = nodetype(line[1])
+#
+#         # Checks if nodes are in graph, otherwise nx would add them
+#         if ni not in g or nj not in g:
+#             raise ValueError("Hey, edge ({}, {}) contains nodes not in "
+#                              "the node data".format(ni, nj))
+#
+#         # Reads the edge data
+#         if edgel_has_data:
+#             if edge_data_is_dict:
+#                 edata = str_to_dict(line[2])
+#             else:
+#                 edata = {key: datatype(val) for key, val in zip(edge_attrs, line[2:])}
+#
+#             # Includes edge
+#             g.add_edge(ni, nj, **edata)
+#
+#         else:
+#             g.add_edge(ni, nj)
+#
+#     return g
+
