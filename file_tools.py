@@ -190,6 +190,7 @@ def str_to_dict(string, key_name=""):
         raise ValueError("Hey, bad parameter or tuple of parameters"
                          " in {} = {}".format(key_name,
                                               string))
+    return d
 
 
 def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
@@ -240,12 +241,12 @@ def seconds_to_hhmmss(time_s):
     return "{}h{}m{}s".format(hh, mm, ss)
 
 
-def list_to_csv(parlist):
+def list_to_csv(parlist, sep=", "):
     """Returns a csv string with elements from a list."""
     result_str = ""
     for par in parlist:
-        result_str += str(par) + ", "
-    return result_str[:-2]
+        result_str += str(par) + sep
+    return result_str[:-len(sep)]
 
 
 def read_csv_names(string):
