@@ -671,7 +671,7 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
         # num_attrs = 0
 
     # ;;;
-    # Note: basically: if not has_data, ignores everything. If has data and header,
+    # Basic idea: if not has_data, ignores everything. If has data and header,
     # either reads from header or from the edge_attrs argument, which has priority.
     # However, if edge_data_is_dict, ignores the read attributes and parses the
     # dict instead.
