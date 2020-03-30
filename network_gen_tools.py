@@ -518,41 +518,8 @@ def average_degree(g):
 # File IO operations with complete network data
 # ---------------------------------------------
 
-# def save_nodes_with_data(g, file_path, which_data=None, sep=" ", write_header=True):
-#     """Exports the list of nodes in a network, including some
-#     attributes (which can be specified as list in "which_data". If not informed,
-#     all data is used.)
-#     """
-#     result = ""
-#
-#     # File header
-#     if write_header:
-#         result = "# node" + sep
-#         if which_data is None:
-#             result += "data\n"
-#         else:
-#             result += str(which_data) + "\n"
-#     # Node and Data
-#     for ni, data in g.nodes(data=True):
-#         result += str(ni) + " "
-#
-#         if which_data is None:
-#             # Exports the data dict, as it is
-#             result += str(data)
-#         else:
-#             result += str(data[which_data])
-#
-#         result += "\n"
-#
-#     result = result[:-1]  # Removes last newline char
-#
-#     # Writes file
-#     with open(file_path, "w") as fp:
-#         fp.write(result)
-
-# ------------------------
 # IMPORTANT
-# The following functions are directed to networkx 2.x, and may not work
+# The following functions are made with networkx 2.x, and may not work
 # using networkx 1.x.
 
 def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attrs=None,
@@ -566,6 +533,8 @@ def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attr
 
     Node data is written using pandas DataFrame.to_csv function.
     Edge data is written using nx.write_edgelist.
+
+    This function is made to be compatible with load_network_with_data.
 
     Parameters
     ----------
@@ -635,8 +604,63 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
                            edge_data_is_dict=False,
                            comments="#", node_col_name="node"):
     """
-    Comment must have only one character
-    TODO DOCSTRINGS
+    Loads the links and nodes of a network from two separate files: node_file and
+    edge_file. This allows the import of node attributes, besides edge attributes.
+
+    Nodes file
+    --------
+    A csv (or tsv) with an indexing column (informed as node_col_name)
+    and data columns. The index column is used as the node ids.
+    The nodes file is interpreted using pandas.read_csv
+
+    Edges file
+    ----------
+    An edgelist file, possibly containing edge attributes, either as
+    a dict for each edge (edge_data_is_dict = True) or as a csv/tsv (default).
+    In the second case, the file must contain a header with the attribute names
+    (edgel_has_header = True), or you must inform the attribute names (in order)
+    as edge_attrs. If edge_attrs is informed, it overrides the names from header.
+    Also, you can avoid reading any edge attr data setting edgel_has_data = False.
+    The edgelist file is interpreted with a self made algorithm, as nx.read_edgelist
+    has limited options.
+
+    This function is made to be compatible with save_network_with_data.
+
+    Parameters
+    ----------
+    nodes_file : str
+        Path to the node data file.
+    edges_file : str
+        Path to the edgelist file.
+    create_using : [nx.Graph, nx.DiGraph, nx.Multigraph, nx.MultiDiGraph]
+        A networkx graph class.
+    nodetype : callable
+        Type cast to node ids. If not informed, the type inferred from
+        pandas.read_csv algorithm is used.
+    node_col_name : str
+        Name of the column in the nodes file that contains the node indexes (ids).
+        Default is "node". Note that it is mandatory that the node file has a
+        header with such information.
+    edge_datatype : callable
+        Type cast to all attributes of the edges. If set to None, it is returned
+        as a string. Can be useful to read more complex (or different) data types.
+        Default is float (targeted to edge weights).
+    sep : str
+        Delimiter used to both node and edge files.
+    edgel_has_header : bool
+    edgel_has_data : bool
+    edge_data_is_dict : bool
+    edge_attrs : iterable
+        Names of the edge attributes. Overrides the names from the file header.
+        Ignored if edge_data_is_dict.
+    comments : str
+        A SINGLE CHARACTER to identify comments. If put at the begining of a line,
+        the whole line is skipped.
+
+
+    Returns
+    -------
+    A networkx graph
     """
     # --------------------
     # Loads node data, as a dict keyed by nodes and valued by attr dicts
@@ -716,95 +740,3 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
             g.add_edge(ni, nj)
 
     return g
-
-# BACKUP: apagar
-# def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodetype=None,
-#                            datatype=float, sep=";",
-#                            edgel_has_header=True, edgel_has_data=True, edge_attrs=None,
-#                            edge_data_is_dict=False,
-#                            comments="#", node_col_name="node"):
-#     """
-#     Comment must have one character
-#     # --------------------
-#     # Loads node data
-#     node_dict = pd.read_csv(nodes_file, sep=sep, index_col=None,
-#                             comment=comments).to_dict(orient="list")
-#
-#     # Converts node dtype
-#     nodes = node_dict.pop(node_col_name)
-#     if nodetype is None:
-#         # Deduces from first node
-#         nodetype = type(nodes[0])
-#     else:
-#         nodes = list(map(nodetype, nodes))
-#
-#     # --------------------
-#     # Loads edge data
-#
-#     # Reads whole file content
-#     with open(edges_file, "r") as fp:
-#         edge_contents = fp.readlines()
-#
-#     # Edge data and name handling.
-#     if edgel_has_data:
-#         # Gets attribute names from header, if not informed
-#         if edgel_has_header and edge_attrs is None:
-#             # Pops the first line and process it
-#             header = edge_contents.pop(0).strip(comments).strip().split(sep)
-#             edge_attrs = header[2:]
-#
-#         # num_attrs = len(edge_attrs)
-#
-#     else:
-#         edge_attrs = []
-#         # num_attrs = 0
-#
-#     # ;;;
-#     # Basic idea: if not has_data, ignores everything. If has data and header,
-#     # either reads from header or from the edge_attrs argument, which has priority.
-#     # However, if edge_data_is_dict, ignores the read attributes and parses the
-#     # dict instead.
-#
-#     # -----------------------------
-#     # Creates the graph with node data
-#
-#     g = create_using()
-#     for i, ni in enumerate(nodes):
-#         g.add_node(ni)
-#         for key, vals in node_dict.items():
-#             g.nodes[ni][key] = vals[i]
-#     # The above can be optimized by converting node DataFrame as:
-#     # pd.DataFrame.to_dict(orient="index")
-#     # and then using g.add_nodes_from(nodes, **attrs)
-#
-#     for line in edge_contents:
-#         # Ignores line if first char is comment.
-#         if line[0] == comments:
-#             continue
-#         # Removes comments, whitespaces and splits in data
-#         line = line.split(comments)[0].strip().split(sep)
-#
-#         # Reads the nodes
-#         ni = nodetype(line[0])
-#         nj = nodetype(line[1])
-#
-#         # Checks if nodes are in graph, otherwise nx would add them
-#         if ni not in g or nj not in g:
-#             raise ValueError("Hey, edge ({}, {}) contains nodes not in "
-#                              "the node data".format(ni, nj))
-#
-#         # Reads the edge data
-#         if edgel_has_data:
-#             if edge_data_is_dict:
-#                 edata = str_to_dict(line[2])
-#             else:
-#                 edata = {key: datatype(val) for key, val in zip(edge_attrs, line[2:])}
-#
-#             # Includes edge
-#             g.add_edge(ni, nj, **edata)
-#
-#         else:
-#             g.add_edge(ni, nj)
-#
-#     return g
-
