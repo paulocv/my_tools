@@ -93,7 +93,8 @@ def read_complete_output_file(filename,
 
     # Reads the actual numerical data from file, interpreting it as a
     # pandas DataFrame with a multi-index.
-    df = pd.read_table(filename, sep=delimiter,
+    # Deprecated from pandas 0.25: pd.read_table
+    df = pd.read_csv(filename, sep=delimiter,
                        skiprows=header_size, header=None,
                        comment=comment_char)
 
@@ -194,7 +195,8 @@ def read_mixed_output_file(filename, decimal_places=9,
                            "".format(varparams_key, "read_mixed_output_file"))
 
     # Reads the database from file and removes inexistent entries
-    df = pd.read_table(filename, sep=delimiter,
+    # deprecated in pandas 0.25: pd.read_table
+    df = pd.read_csv(filename, sep=delimiter,
                        skiprows=header_size, header=None,
                        comment=comment_char)
     df = df.dropna(axis=1)
@@ -302,7 +304,8 @@ def read_simulation_file(filename,
                                      comment_char)
 
     # Reads the database from file and removes inexistent entries
-    df = pd.read_table(filename, sep=delimiter,
+    # deprecated from pandas 0.25: pd.read_table
+    df = pd.read_csv(filename, sep=delimiter,
                        skiprows=header_size, header=None,
                        comment=comment_char, index_col=0)
     df = df.dropna(axis=1)
