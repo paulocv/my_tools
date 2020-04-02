@@ -249,12 +249,12 @@ def list_to_csv(parlist, sep=", "):
     return result_str[:-len(sep)]
 
 
-def read_csv_names(string):
+def read_csv_names(string, sep=","):
     """Reads multiple strings separated by commas and removes border spaces.
     Example:
         "beta, pj ,  num_steps" --> ['beta', 'pj', 'num_steps']
     """
-    return [remove_border_spaces(name) for name in string.split(',')]
+    return [remove_border_spaces(name) for name in string.split(sep)]
 
 
 def cast_to_export(value):
