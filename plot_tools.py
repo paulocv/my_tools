@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from cycler import cycler
 import os
 # import sys
 from toolbox.file_tools import SEP, write_config_string, list_to_csv
@@ -128,3 +129,41 @@ def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
         fp.write(style_text)
 
 
+# ---------------------------
+# Color, linestyle and other sequences
+# ---------------------------
+
+# Qualitative printer friendly only color seqs
+colorbrewer_pf_01 = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33',
+                     '#a65628', '#f781bf', '#999999']
+colorbrewer_pf_02 = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666']
+colorbrewer_pf_03 = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462',
+                     '#b3de69', '#fccde5']
+
+# Colorblind friendly only color seqs
+colorbrewer_cbf_01 = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
+colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
+colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
+
+
+def set_color_cycle(colors):
+    """Warning: this will only setup the colors, reseting all other cyclic
+    properties.
+
+    To set up a property without affecting the other, implement
+    change_prop_cycle function.
+    """
+    plt.rcParams["axes.prop_cycle"] = cycler(color=colors)
+
+
+def change_prop_cycle(colors=None, linestyles=None, linewidths=None):
+    """
+    [Not implemented] This function should allow the set of some specific
+    line properties to lists that are not necessarily from same length.
+    Should also be able to change one property without affecting the others,
+    and for that a "common period" overall cycler should be created.
+
+    See the https://matplotlib.org/cycler/ docs for cycler to find handy
+    tools for that.
+    """
+    raise NotImplemented
