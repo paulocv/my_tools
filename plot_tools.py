@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from cycler import cycler
 import os
+from functools import reduce
 # import sys
 from toolbox.file_tools import SEP, write_config_string, list_to_csv
 
@@ -70,22 +71,9 @@ mystyle_01 = {
     "figure.figsize": (9.1, 7.),
 }
 
-
-# TODO: Create some nice color cycles, eg. from colorbrewer, and a function to
-# quickly set the mpl default cycle.
-
-def stdfigsize(scale=1, nx=1, ny=1, ratio=1.3):
-    """
-    Returns a tuple to be used as figure size.
-    -------
-    returns (7*ratio*scale*nx, 7.*scale*ny)
-    By default: ratio=1.3
-    If ratio<0 them ratio = golden ratio
-    """
-    if ratio < 0:
-        ratio = 1.61803398875
-
-    return 7 * ratio * scale * nx, 7 * scale * ny
+mystyle_01_docs = "A nice style for journal plots, with large fonts, minor ticks,"
+mystyle_01_docs += "a latex font much better than default, and others."
+mystyle_01_docs += "Based on a style from Luiz Alves."
 
 
 def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
@@ -129,9 +117,44 @@ def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
         fp.write(style_text)
 
 
+# ------------------------
+# Figure size easy handler function
+# ------------------------
+
+def stdfigsize(scale=1, nx=1, ny=1, ratio=1.3):
+    """
+    Returns a tuple to be used as figure size.
+    -------
+    returns (7*ratio*scale*nx, 7.*scale*ny)
+    By default: ratio=1.3
+    If ratio<0 them ratio = golden ratio
+    """
+    if ratio < 0:
+        ratio = 1.61803398875
+
+    return 7 * ratio * scale * nx, 7 * scale * ny
+
 # ---------------------------
 # Color, linestyle and other sequences
 # ---------------------------
+
+
+# Aux function: least common multiple.
+def _lcm(x, y):
+    """Least common multiple via brute (incremental) search."""
+    if x > y:
+        z = x
+    else:
+        z = y
+
+    while True:
+        if(z % x == 0) and (z % y == 0):
+            lcm = z
+            break
+        z += 1
+
+    return lcm
+
 
 # Qualitative printer friendly only color seqs
 colorbrewer_pf_01 = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33',
@@ -156,14 +179,46 @@ def set_color_cycle(colors):
     plt.rcParams["axes.prop_cycle"] = cycler(color=colors)
 
 
-def change_prop_cycle(colors=None, linestyles=None, linewidths=None):
-    """
-    [Not implemented] This function should allow the set of some specific
-    line properties to lists that are not necessarily from same length.
-    Should also be able to change one property without affecting the others,
-    and for that a "common period" overall cycler should be created.
+def set_composite_prop_cycle(**props):
+    """Sets the prop cycle to combinations of properties from seqs that
+    are not necessarily commensurable.
+    Each property is advanced at each new plot, unlike
+    set_product_prop_cycle.
 
-    See the https://matplotlib.org/cycler/ docs for cycler to find handy
-    tools for that.
+    Arguments are keywords as prop_name=prop_list.
     """
-    raise NotImplemented
+    # lcm()?? # Current function is for 2 values only.
+
+    # Gets the multiplication factor for each prop sequence
+    lens = [len(vals) for vals in props.values()]
+    total_len = reduce((lambda x, y: x * y), lens)  # Product
+    mult_facs = [total_len // l for l in lens]
+
+    # Creates the composite cycler
+    comp_props = {key: n*list(vals)
+                  for n, (key, vals) in zip(mult_facs, props.items())}
+    prop_cycle = cycler(**comp_props)
+
+    # Sets it to mpl and returns
+    plt.rcParams["axes.prop_cycle"] = prop_cycle
+    return prop_cycle
+
+
+def set_product_prop_cycle(**props):
+    """Sets the prop cycle to combinations of properties from seqs that
+    are not necessarily commensurable.
+    The properties defined at last will cycle first ("faster"), followed
+    by the next and so on.
+
+    Arguments are keywords as prop_name=prop_list.
+    """
+    # Composite prop cycler
+    cycle_list = []
+    for key, vals in props.items():
+        cycle_list.append(cycler(**{key: vals}))
+
+    prop_cycle = reduce((lambda x, y: x * y), cycle_list)  # Product
+
+    # Sets it to mpl and returns
+    plt.rcParams["axes.prop_cycle"] = prop_cycle
+    return prop_cycle
