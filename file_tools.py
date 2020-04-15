@@ -193,6 +193,16 @@ def str_to_dict(string, key_name=""):
     return d
 
 
+# Float from strings are accepted as fractions, like 1 / 5.1
+def float_as_frac(s):
+    try:
+        res = float(s)
+    except ValueError:
+        res = s.split("/")
+        res = float(res[0]) / float(res[1])
+    return res
+
+
 def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
     """Returns a boolean read from a string at an input dictionary.
     True if the string belongs to 'truelist', false otherwise.
