@@ -203,7 +203,8 @@ def float_as_frac(s):
     return res
 
 
-def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
+def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False,
+                       std_value=False):
     """Returns a boolean read from a string at an input dictionary.
     True if the string belongs to 'truelist', false otherwise.
     By default, truelist has "True" only.
@@ -219,7 +220,9 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
     raise_keyerror : bool
         Defines if a key error is raised if the required key is not
         found on input_dict. Default is False, meaning no key error.
-        In this case, the function returns False.
+        In this case, the function returns std_value.
+    std_value : bool
+        Value to return if the key is not found and raise_keyerror=False.
     """
     if truelist is None:
         truelist = ["True"]
@@ -231,7 +234,7 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
             raise KeyError("Hey, key '{}' was not found on input dict."
                            "".format(key))
         else:
-            return False
+            return std_value
 
 
 def seconds_to_hhmmss(time_s):
