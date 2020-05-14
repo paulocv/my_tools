@@ -288,27 +288,27 @@ def cast_to_export(value):
 
     return out
 
-# -------------------------------------------------------------------
-# CONFIGURATION FILE AND INPUT DICIONARYcommon operations
-# -------------------------------------------------------------------
 
+# -------------------------------------------------------------------
+# CONFIGURATION FILE AND INPUT DICIONARY common operations
+# -------------------------------------------------------------------
 
 def read_optional_from_dict(input_dict, key, standard_val=None,
                             typecast=None):
     """Tries to read an option from a dictionary. If not found, a
     standard value is returned instead. If no standard value is
-    informed, key error is raised. Data can also be converted by
+    informed, None is returned. Data can also be converted by
     a type cast.
     The given standard value is not converted by typecast.
     """
     try:
         val = input_dict[key]
     except KeyError:
-        if standard_val is None:
-            raise KeyError("Hey, parameter '{}' was not found on dict."
-                           "".format(key))
-        else:
-            return standard_val
+        # if standard_val is None:
+        #     raise KeyError("Hey, parameter '{}' was not found on dict."
+        #                    "".format(key))
+        # else:
+        return standard_val
     # Data conversion.
     if typecast is None:
         return val
