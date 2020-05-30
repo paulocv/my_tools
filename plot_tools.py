@@ -8,9 +8,7 @@ from functools import reduce
 # import sys
 from toolbox.file_tools import SEP, write_config_string, list_to_csv
 
-# TODO ABSOLUTELLY: include make ax sequence (probably enhance it).
-
-STD_USETEX = False
+_STD_USETEX = False
 
 
 # A nice style for journal plots, with large fonts, minor ticks,
@@ -18,7 +16,7 @@ STD_USETEX = False
 # Based on a style from Luiz Alves.
 mystyle_01 = {
     # Latex
-    "text.usetex": STD_USETEX,
+    "text.usetex": _STD_USETEX,
     "text.latex.preamble": [r"\usepackage[T1]{fontenc}",
                             r"\usepackage{lmodern}",
                             r"\usepackage{amsmath}",
@@ -72,8 +70,8 @@ mystyle_01 = {
     "figure.figsize": (9.1, 7.),
 }
 
-mystyle_01_docs = "A nice style for journal plots, with large fonts, minor ticks,"
-mystyle_01_docs += "a latex font much better than default, and others."
+mystyle_01_docs = "A nice style for journal plots, with large fonts, minor ticks, "
+mystyle_01_docs += "a latex font much better than default, and others. "
 mystyle_01_docs += "Based on a style from Luiz Alves."
 
 
@@ -119,8 +117,26 @@ def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
 
 
 # ------------------------
-# Figure size easy handler function
+# FIGURE AND AXIS CREATION
 # ------------------------
+
+def make_axes_seq(num_axes, max_cols=3, total_width=9., ax_height=3.):
+    """Creates a sequence of num_axes axes in a figure.
+    The axes are periodically disposed into rows of at most max_cols elements.
+    Exceeding axes in the last row are removed
+    """
+    # Basic dependent numbers
+    num_rows = (num_axes - 1) // max_cols + 1
+
+    # Empty figure initialization and gridspec object (divides space into grids).
+    fig = plt.figure(figsize=(total_width, num_rows * ax_height))
+    gridspecs = fig.add_gridspec(num_rows, max_cols)
+
+    # Creates the list of axes with the required number of axes
+    axes = [fig.add_subplot(gridspecs[i]) for i in range(num_axes)]
+
+    return fig, axes
+
 
 def stdfigsize(scale=1, nx=1, ny=1, ratio=1.3):
     """
@@ -134,6 +150,7 @@ def stdfigsize(scale=1, nx=1, ny=1, ratio=1.3):
         ratio = 1.61803398875
 
     return 7 * ratio * scale * nx, 7 * scale * ny
+
 
 # ---------------------------
 # Color, linestyle and other sequences
@@ -192,11 +209,11 @@ def set_composite_prop_cycle(**props):
 
     # Gets the multiplication factor for each prop sequence
     lens = [len(vals) for vals in props.values()]
-    total_len = reduce((lambda x, y: x * y), lens)  # Product
-    mult_facs = [total_len // l for l in lens]
+    total_len = reduce((lambda x, y: x * y), lens)  # Product of each element
+    mult_facs = [total_len // d for d in lens]
 
     # Creates the composite cycler
-    comp_props = {key: n*list(vals)
+    comp_props = {key: n * list(vals)
                   for n, (key, vals) in zip(mult_facs, props.items())}
     prop_cycle = cycler(**comp_props)
 
