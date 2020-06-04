@@ -14,6 +14,11 @@ import pandas as pd
 from toolbox.file_tools import read_optional_from_dict, list_to_csv, str_to_dict
 
 
+# Networkx 1.x compatibility
+if nx.__version__[0] == '1':
+    nx.selfloop_edges = lambda g: g.selfloop_edges()
+
+
 def remove_selfloops(g):
     """Function to remove every self loop on graph G.
     Changes are directly applied to object G.
@@ -21,7 +26,6 @@ def remove_selfloops(g):
     :param g:(nx graph, digraph, etc) the graph.
     """
     g.remove_edges_from(nx.selfloop_edges(g))  # Networkx 2.4
-    # g.remove_edges_from(g.selfloop_edges())  # Networkx 1.10
 
 
 def remove_isolates(g):
