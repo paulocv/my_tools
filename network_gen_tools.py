@@ -674,6 +674,7 @@ def load_network_with_data(nodes_file, edges_file, create_using=nx.Graph, nodety
     # Converts the node to required type and produces a container to g.add_nodes_from
     if nodetype is None:
         node_container = [(ni, attr) for ni, attr in node_dict.items()]
+        nodetype = type(node_container[0][0])
     else:
         node_container = [(nodetype(ni), attr) for ni, attr in node_dict.items()]
 

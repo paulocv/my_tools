@@ -193,7 +193,18 @@ def str_to_dict(string, key_name=""):
     return d
 
 
-def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
+# Float from strings are accepted as fractions, like 1 / 5.1
+def float_as_frac(s):
+    try:
+        res = float(s)
+    except ValueError:
+        res = s.split("/")
+        res = float(res[0]) / float(res[1])
+    return res
+
+
+def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False,
+                       std_value=False):
     """Returns a boolean read from a string at an input dictionary.
     True if the string belongs to 'truelist', false otherwise.
     By default, truelist has "True" only.
@@ -209,7 +220,9 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
     raise_keyerror : bool
         Defines if a key error is raised if the required key is not
         found on input_dict. Default is False, meaning no key error.
-        In this case, the function returns False.
+        In this case, the function returns std_value.
+    std_value : bool
+        Value to return if the key is not found and raise_keyerror=False.
     """
     if truelist is None:
         truelist = ["True"]
@@ -221,7 +234,7 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False):
             raise KeyError("Hey, key '{}' was not found on input dict."
                            "".format(key))
         else:
-            return False
+            return std_value
 
 
 def seconds_to_hhmmss(time_s):
@@ -249,12 +262,12 @@ def list_to_csv(parlist, sep=", "):
     return result_str[:-len(sep)]
 
 
-def read_csv_names(string):
+def read_csv_names(string, sep=","):
     """Reads multiple strings separated by commas and removes border spaces.
     Example:
         "beta, pj ,  num_steps" --> ['beta', 'pj', 'num_steps']
     """
-    return [remove_border_spaces(name) for name in string.split(',')]
+    return [remove_border_spaces(name) for name in string.split(sep)]
 
 
 def cast_to_export(value):
@@ -275,27 +288,27 @@ def cast_to_export(value):
 
     return out
 
-# -------------------------------------------------------------------
-# CONFIGURATION FILE AND INPUT DICIONARYcommon operations
-# -------------------------------------------------------------------
 
+# -------------------------------------------------------------------
+# CONFIGURATION FILE AND INPUT DICIONARY common operations
+# -------------------------------------------------------------------
 
 def read_optional_from_dict(input_dict, key, standard_val=None,
                             typecast=None):
     """Tries to read an option from a dictionary. If not found, a
     standard value is returned instead. If no standard value is
-    informed, key error is raised. Data can also be converted by
+    informed, None is returned. Data can also be converted by
     a type cast.
     The given standard value is not converted by typecast.
     """
     try:
         val = input_dict[key]
     except KeyError:
-        if standard_val is None:
-            raise KeyError("Hey, parameter '{}' was not found on dict."
-                           "".format(key))
-        else:
-            return standard_val
+        # if standard_val is None:
+        #     raise KeyError("Hey, parameter '{}' was not found on dict."
+        #                    "".format(key))
+        # else:
+        return standard_val
     # Data conversion.
     if typecast is None:
         return val
