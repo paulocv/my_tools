@@ -186,6 +186,9 @@ colorbrewer_cbf_01 = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
 colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
 colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
 
+# Matplotlib modern standard
+default_colorlist = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
 
 def set_color_cycle(colors):
     """Warning: this will only setup the colors, reseting all other cyclic
