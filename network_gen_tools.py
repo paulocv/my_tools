@@ -521,6 +521,7 @@ def average_degree(g):
 # IMPORTANT
 # The following functions are made with networkx 2.x, and may not work
 # using networkx 1.x.
+# UPDATE: added comments for lines that must change in each nx version.
 
 def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attrs=None,
                            sep=";", nodes=None, write_header=True, float_format=None,
@@ -563,7 +564,8 @@ def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attr
         Comment indicator
     """
     if node_attrs is None:
-        node_attrs = g.nodes()[0].keys()
+        node_attrs = g.nodes()[0].keys()  # nx 2.x
+        # node_attrs = g.nodes(data=True)[0][1].keys()  # nx 1.x
 
     if nodes is None:
         nodes = g.nodes()
@@ -574,7 +576,8 @@ def save_network_with_data(g, nodes_file, edges_file, node_attrs=None, edge_attr
     nodes_data = {key: [] for key in node_attrs}
     for ni in nodes:
         for key in node_attrs:
-            nodes_data[key].append(g.nodes[ni][key])
+            nodes_data[key].append(g.nodes[ni][key])  # nx 2.x
+            # nodes_data[key].append(g.node[ni][key])  # nx 1.x
 
     pd.DataFrame(nodes_data, index=nodes).to_csv(
         nodes_file, sep=sep, float_format=float_format, header=write_header,
