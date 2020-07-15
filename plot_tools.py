@@ -138,18 +138,18 @@ def make_axes_seq(num_axes, max_cols=3, total_width=9., ax_height=3.):
     return fig, axes
 
 
-def stdfigsize(scale=1, nx=1, ny=1, ratio=1.3):
+def stdfigsize(scale=1, nrows=1, ncols=1, xtoy_ratio=1.3):
     """
     Returns a tuple to be used as figure size.
     -------
-    returns (7*ratio*scale*nx, 7.*scale*ny)
+    returns
     By default: ratio=1.3
-    If ratio<0 them ratio = golden ratio
+    If ratio<0 then ratio = golden ratio
     """
-    if ratio < 0:
-        ratio = 1.61803398875
+    if xtoy_ratio < 0:
+        xtoy_ratio = 1.61803398875
 
-    return 7 * ratio * scale * nx, 7 * scale * ny
+    return 7 * xtoy_ratio * scale * ncols, 7 * scale * nrows
 
 
 # ---------------------------
@@ -185,6 +185,9 @@ colorbrewer_pf_03 = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fd
 colorbrewer_cbf_01 = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
 colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
 colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
+
+# Matplotlib modern standard
+default_colorlist = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
 
 def set_color_cycle(colors):
