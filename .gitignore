@@ -1,4 +1,5 @@
 *
+!__init__.py
 !database_tools.py
 !file_tools.py
 !make_job.py
