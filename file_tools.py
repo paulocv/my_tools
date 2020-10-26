@@ -577,7 +577,7 @@ def write_config_string(input_dict, entry_char='>', attribution_char='=',
     return result_str
 
 
-def count_header_lines(file_name, header_end="-----\n"):
+def count_header_lines(file_name, header_end=HEADER_END):
     """Opens and reads a file until it finds a 'header finalization' line.
     By standard, such line is '-----\n' (five -).
     Returns only the number of lines in the header.
@@ -610,7 +610,7 @@ def count_header_lines(file_name, header_end="-----\n"):
     return 0
 
 
-def read_file_header(filename, header_end="-----\n"):
+def read_file_header(filename, header_end=HEADER_END):
     """Reads a file until it finds a 'header finalization' line, and
     returns the read content.
 
