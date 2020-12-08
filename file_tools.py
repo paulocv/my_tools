@@ -58,7 +58,7 @@ def read_argv_optional(argi, dtype=None, default=None):
     return res
 
 
-def read_flag_argument(argv, flag, optional=True):
+def read_flag_argument(argv, flag, optional=True, default=None):
     """
     Tries to read a flagged option from a list of strings - typically argv.
     OBS: python has the argparse module, which shall do the same job and even better.
@@ -78,6 +78,8 @@ def read_flag_argument(argv, flag, optional=True):
     optional : bool
         If True, returns None for not-found option.
         If False, raises an error
+    default : str
+        If optional is True, specifies the default return value.
     """
 
     try:
@@ -85,7 +87,7 @@ def read_flag_argument(argv, flag, optional=True):
         flag_index = argv.index(flag)
     except ValueError:
         if optional:
-            return None
+            return default
         else:
             raise ValueError("Hey, the required flag '{}' was not found.".format(flag))
 
