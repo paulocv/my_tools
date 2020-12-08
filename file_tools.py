@@ -58,6 +58,45 @@ def read_argv_optional(argi, dtype=None, default=None):
     return res
 
 
+def read_flag_argument(argv, flag, optional=True):
+    """
+    Tries to read a flagged option from a list of strings - typically argv.
+    OBS: python has the argparse module, which shall do the same job and even better.
+    But this function may be easier for simple uses.
+
+    Example
+    -------
+    "tmux a -t my_session"  --> argv = ["tmux", "a", "-t", "my_session"]
+    Calling read_flag_options(argv, "-t") should return "my_session".
+
+    Parameters
+    ----------
+    argv : list
+        List of strings from which the argument is extracted.
+    flag : str
+        String that flags the desired option as the next entry. Must contain trailing "-" or "--".
+    optional : bool
+        If True, returns None for not-found option.
+        If False, raises an error
+    """
+
+    try:
+        # Finds the flag in list. If not found, catches the ValueError.
+        flag_index = argv.index(flag)
+    except ValueError:
+        if optional:
+            return None
+        else:
+            raise ValueError("Hey, the required flag '{}' was not found.".format(flag))
+
+    # Checks if given is was not the last position in list.
+    if flag_index >= len(argv) - 1:
+        raise ValueError("Hey, the flag '{}' is the last element in the given list, but I expected an "
+                         "option to be passed after it.".format(flag))
+    else:
+        return argv[flag_index + 1]
+
+
 def get_folder_name_from_argv(argi=2, root_folder="", argi_check=True):
     """Reads a folder path from argv (argv[2] by standard).
     Adds the separator character (/, \\) if it was forgotten.
