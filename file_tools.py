@@ -58,6 +58,47 @@ def read_argv_optional(argi, dtype=None, default=None):
     return res
 
 
+def read_flag_argument(argv, flag, optional=True, default=None):
+    """
+    Tries to read a flagged option from a list of strings - typically argv.
+    OBS: python has the argparse module, which shall do the same job and even better.
+    But this function may be easier for simple uses.
+
+    Example
+    -------
+    "tmux a -t my_session"  --> argv = ["tmux", "a", "-t", "my_session"]
+    Calling read_flag_options(argv, "-t") should return "my_session".
+
+    Parameters
+    ----------
+    argv : list
+        List of strings from which the argument is extracted.
+    flag : str
+        String that flags the desired option as the next entry. Must contain trailing "-" or "--".
+    optional : bool
+        If True, returns None for not-found option.
+        If False, raises an error
+    default : str
+        If optional is True, specifies the default return value.
+    """
+
+    try:
+        # Finds the flag in list. If not found, catches the ValueError.
+        flag_index = argv.index(flag)
+    except ValueError:
+        if optional:
+            return default
+        else:
+            raise ValueError("Hey, the required flag '{}' was not found.".format(flag))
+
+    # Checks if given is was not the last position in list.
+    if flag_index >= len(argv) - 1:
+        raise ValueError("Hey, the flag '{}' is the last element in the given list, but I expected an "
+                         "option to be passed after it.".format(flag))
+    else:
+        return argv[flag_index + 1]
+
+
 def get_folder_name_from_argv(argi=2, root_folder="", argi_check=True):
     """Reads a folder path from argv (argv[2] by standard).
     Adds the separator character (/, \\) if it was forgotten.
@@ -588,7 +629,7 @@ def write_config_string(input_dict, entry_char='>', attribution_char='=',
     return result_str
 
 
-def count_header_lines(file_name, header_end="-----\n"):
+def count_header_lines(file_name, header_end=HEADER_END):
     """Opens and reads a file until it finds a 'header finalization' line.
     By standard, such line is '-----\n' (five -).
     Returns only the number of lines in the header.
@@ -621,7 +662,7 @@ def count_header_lines(file_name, header_end="-----\n"):
     return 0
 
 
-def read_file_header(filename, header_end="-----\n"):
+def read_file_header(filename, header_end=HEADER_END):
     """Reads a file until it finds a 'header finalization' line, and
     returns the read content.
 
@@ -664,7 +705,37 @@ def read_file_header(filename, header_end="-----\n"):
 # -------------------------------
 
 
-def tar_zip_folder(dirname, tarname=None, remove_orig=True, level=5):
+def zip_file(fname, remove_orig=True, level=5, verbose=False, ask_overwrite=False):
+    """Compresses a single file using gzip.
+    The compressed file name is [fname].gz
+    """
+    flags = ""
+    if verbose:
+        flags += "v"  # "verbose"
+    if not ask_overwrite:
+        flags += "f"  # "force"
+    if not remove_orig:
+        flags += "k"  # "keep"
+
+    os.system("gzip -" + flags + " -{:d} ".format(level) + "-f " + fname)
+
+
+def unzip_file(fname, remove_orig=True, verbose=False, ask_overwrite=False):
+    """Decompresses a single file using gzip.
+    The decompressed file name is [fname] minus the .gz suffix.
+    """
+    flags = "d"  # "decompress"
+    if verbose:
+        flags += "v"  # "verbose"
+    if not ask_overwrite:
+        flags += "f"  # "force"
+    if not remove_orig:
+        flags += "k"  # "keep"
+
+    os.system("gzip -" + flags + " -f " + fname)
+
+
+def tar_zip_folder(dirname, tarname=None, remove_orig=True, level=5, verbose=False):
     """Compresses a folder to a tar.gz file.
 
     Parameters
@@ -690,24 +761,70 @@ def tar_zip_folder(dirname, tarname=None, remove_orig=True, level=5):
     if tarname is None:
         tarname = dirname + ".tar"
 
-    # Compresses folder (supresses output to "null")
-    # -f: Does not ask to overwrite.
-    # os.system("tar -cvzf " + tarname + " " + dirname + " > null")
-    os.system("tar -cvf " + tarname + " " + dirname + " > null")
-    os.system("gzip -{} -f ".format(level) + tarname)
+    flags = "cz"  # -c = Create tar file. -z = zip (compress with gzip)
+    if verbose:
+        flags += "v"
+
+    # This command tars and compresses the file at once
+    os.system("GZIP=-{:d} ".format(level) + "tar -" + flags + " -f " + tarname + " " + dirname)
+    # os.system("gzip -{:d} -f ".format(level) + tarname)  # -z flag
 
     # Removes the original folder
     if remove_orig:
-        # os.system("rm " + dirname + SEP + "*")
         os.system("rm -r " + dirname)
 
 
-def tar_unzip_folder(tarname, remove_orig=True):
+def tar_unzip_folder(tarname, remove_orig=True, verbose=False):
     """Unzips and turns a .tar.gz file into a folder again."""
+
+    flags = "xz"
+    if verbose:
+        flags += "v"
+
     # Unzips and untars
-    os.system("tar -xvzf " + tarname + " > null")
+    os.system("tar -" + flags + " -f" + tarname)
 
     # Removes the original tar
     if remove_orig:
         # os.system("rm " + dirname + SEP + "*")
         os.system("rm " + tarname)
+
+
+def possibly_unzip_file(fname, zip_suffixes=(".gz", ".zip"), raise_error=True):
+    """
+    For a "regular" path fname, checks if it is actually ziped (i.e., fname + zip_suffix).
+
+    Parameters
+    ----------
+    fname : str
+        Path of the file without any zip suffix (such as .gz), regardless of existence.
+    zip_suffixes : tuple
+        Possible suffixes of the compressed file, such as .gz, .zip, .xz, .7z.
+    raise_error : bool
+        If True, raises an error if neither unzipped nor zipped versions of the file are found.
+
+    Returns
+    -------
+    unzip_occurs : bool
+        Returns true only if the decompression is executed.
+    """
+    # First checks if normal path exists
+    if os.path.exists(fname):
+        return False
+
+    # Otherwise, checks if zipped file exists
+    for s in zip_suffixes:
+        if os.path.exists(fname + s):
+            unzip_file(fname + s, remove_orig=False)
+            return True
+
+    # At this point, no version of the file was found. Either raises an error or leaves silently.
+    if raise_error:
+        raise FileNotFoundError("Hey, file '{}' was not found neither as it is, nor in a zipped format.\n"
+                                "I've tried these suffixes: {}".format(fname, zip_suffixes))
+    return False
+
+
+def remove_file(fname):
+    """Shorthand to remove file. Useful for modules that do not import 'os'."""
+    return os.system("rm " + fname)

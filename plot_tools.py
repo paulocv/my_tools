@@ -1,15 +1,22 @@
 """Tools for plot styling - creation of style sheets."""
 
+from cycler import cycler
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from cycler import cycler
+import matplotlib.font_manager
+import numpy as np
 import os
+
 from functools import reduce
-# import sys
+
 from toolbox.file_tools import SEP, write_config_string, list_to_csv
 
 _STD_USETEX = False
 
+
+# ------------------------------------------
+# CUSTOM STYLES
+# ------------------------------------------
 
 # A nice style for journal plots, with large fonts, minor ticks,
 # a latex font much better than default, and others.
@@ -73,6 +80,72 @@ mystyle_01 = {
 mystyle_01_docs = "A nice style for journal plots, with large fonts, minor ticks, "
 mystyle_01_docs += "a latex font much better than default, and others. "
 mystyle_01_docs += "Based on a style from Luiz Alves."
+
+
+# --------------------
+# Redesign of mystyle_01, to look slightly more modern.
+# Smaller ticks and a Times-like font.
+mystyle_02 = {
+    # Latex
+    "text.usetex": _STD_USETEX,
+    "text.latex.preamble": [r"\usepackage[T1]{fontenc}",
+                            r"\usepackage{lmodern}",
+                            r"\usepackage{amsmath}",
+                            r"\usepackage{mathptmx}"
+                            ],
+
+    # Font params
+    "axes.labelsize": 24,
+    "axes.titlesize": 24,
+    "axes.labelpad": 15,
+    "axes.titlepad": 15,
+    "xtick.labelsize": 20,
+    "ytick.labelsize": 20,
+
+    # Axis config
+    "axes.linewidth": 1.8,  # For axis frame, not for plotted lines
+
+    # Axis ticks
+    "ytick.right": "on",  # Right and top axis included
+    "xtick.top": "on",
+    "xtick.major.width": 1.6,
+    "xtick.minor.width": 1.6,
+    "xtick.major.size": 7,
+    "xtick.minor.size": 3.5,
+    "xtick.major.pad": 10,
+    "xtick.minor.pad": 10,
+    "ytick.major.width": 1.6,
+    "ytick.minor.width": 1.6,
+    "ytick.major.size": 7,
+    "ytick.minor.size": 3.5,
+    "ytick.major.pad": 10,
+    "ytick.minor.pad": 10,
+    "xtick.direction": "in",
+    "ytick.direction": "in",
+    "xtick.minor.visible": True,  # Includes minor ticks
+    "ytick.minor.visible": True,
+
+    # Lines and markers
+    "lines.linewidth": 4,
+    "lines.markersize": 9,
+    "lines.markeredgecolor": (0.1, 0.1, 0.1),  # Dark gray for the edges of markers
+    "lines.markeredgewidth": 1,
+    'errorbar.capsize': 4.0,
+
+    # Font
+    "font.family": "serif",
+    "font.serif": ["FreeSerif", "Liberation Serif"],
+    "mathtext.fontset": "cm",  # Corrects the horrible sans font for latex math
+
+    # Legend
+    "legend.numpoints": 2,  # Uses two points as a sample
+    "legend.fontsize": 20,
+    "legend.framealpha": 0.75,
+}
+
+mystyle_02_docs = "Another nice style for journal plots, with large fonts, minor ticks, "
+mystyle_02_docs += "a latex font much better than default, and others. "
+mystyle_02_docs += "Redesigned from mystyle_01 to look more modern."
 
 
 def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
@@ -243,3 +316,49 @@ def set_product_prop_cycle(**props):
     # Sets it to mpl and returns
     plt.rcParams["axes.prop_cycle"] = prop_cycle
     return prop_cycle
+
+
+# ------------------------
+# ETC
+# ------------------------
+
+
+def get_available_font_names():
+    """Returns a list with fonts currently recognized by matplotlib"""
+    return [f.name for f in mpl.font_manager.fontManager.ttflist]
+
+
+def add_arrow(line, position=None, direction='right', size=15, color=None):
+    """
+    By users Eric and thomas from stackoverflow
+    https://stackoverflow.com/questions/34017866/arrow-on-a-line-plot-with-matplotlib
+
+    Add an arrow to a line, showing the "direction" of the plot (when it makes sense).
+
+    line:       Line2D object
+    position:   x-position of the arrow. If None, mean of xdata is taken
+    direction:  'left' or 'right'
+    size:       size of the arrow in fontsize points
+    color:      if None, line color is taken.
+    """
+    if color is None:
+        color = line.get_color()
+
+    xdata = line.get_xdata()
+    ydata = line.get_ydata()
+
+    if position is None:
+        position = xdata.mean()
+    # find closest index
+    start_ind = np.argmin(np.absolute(xdata - position))
+    if direction == 'right':
+        end_ind = start_ind + 1
+    else:
+        end_ind = start_ind - 1
+
+    line.axes.annotate('',
+        xytext=(xdata[start_ind], ydata[start_ind]),
+        xy=(xdata[end_ind], ydata[end_ind]),
+        arrowprops=dict(arrowstyle="->", color=color),
+        size=size
+    )
