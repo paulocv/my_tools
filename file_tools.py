@@ -2,7 +2,7 @@
 Version: 2.0 - First version to reveive a version number. :p
 (1.x will be left for older non-registered versions).
 """
-
+import json
 import os
 import sys
 import numpy as np
@@ -130,6 +130,17 @@ def add_spaces_to_fill(text, places):
     string is given by 'places'.
     """
     return text + (places-len(text))*" "
+
+
+def str_to_list_json(s):
+    """Converts a string to a python list using json.loads().
+    Will only work for simple lists with objects supported by json.
+
+    s : str
+    Returns : list
+    """
+    s.replace("'", '"')
+    return json.loads(s)
 
 
 def str_to_list(string, key_name=""):
