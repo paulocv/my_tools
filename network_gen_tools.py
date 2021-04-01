@@ -118,10 +118,10 @@ def my_powerlaw_sequence(size, gamma, k_min=1, k_max=None):
         If not informed, is set to sqrt(size).
     """
 
-    # If k_max is not informed, it is set to the closest integer of
+    # If k_max is not informed, it is set to the closest integer to
     # sqrt(size)
     if k_max is None:
-        k_max = int(np.sqrt(size) + 0.5)
+        k_max = round(np.sqrt(size))
 
     # Checks if k_min is not less than k_max
     if k_min >= k_max:
