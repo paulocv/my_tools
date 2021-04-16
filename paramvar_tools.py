@@ -332,8 +332,10 @@ def build_single_input_dict(mult_input_dict, keys_list, values_list):
 
 def run_simulations_general(mult_input_dict, sim_func,
                             summary_file_path, var_params_tuple=None,
-                            run_parallel=False, parallel_execs=False):
-    """A general shape of a 'run_simulations' function, which is the
+                            run_parallel=False, parallel_execs=False,
+                            num_sim=None):
+    """
+    A general shape of a 'run_simulations' function, which is the
      core of the paramvar.
      This function takes a multinput dictionary and (optionally) a set of
      names and values of parameters to vary and promotes the simulation
@@ -365,6 +367,9 @@ def run_simulations_general(mult_input_dict, sim_func,
         If True and also if run_parallel is True, then the parallelization
         occurs at the level of independent executions, and not over
         different simulations.
+    num_sim : int
+        Optional. Total number of simulations. If not informed, it is calculated
+        as the length of var_params_tuple.
     """
     # If var_params_tuple was not informed, construct it from multinput dict
     if var_params_tuple is None:
@@ -375,7 +380,8 @@ def run_simulations_general(mult_input_dict, sim_func,
     flat_names_list = ziplist_to_flat(names_list)  # Flattened version, without zip params
 
     # Gets the number of simulations that will be executed:
-    num_sim = len(list(itertools.product(*values_list)))
+    if num_sim is None:
+        num_sim = len(list(itertools.product(*values_list)))
 
     # Initial screen feedback
     print("--------------------")
@@ -406,17 +412,6 @@ def run_simulations_general(mult_input_dict, sim_func,
         for value in flat_parameter_values:  # Current parameters
             param_str += (cast_to_export(value) + "\t")
         varparam_strings += [param_str]
-
-        # # Screen feedback for the current simulation run
-        # print("\n[{} of {}] Parameters: ".format(i_sim+1, num_sim), end="")
-        # for name, val in zip(names_list, parameter_values):
-        #     print("{} = {}, ".format(name, val), end="")
-        # print()
-        # print(*output_topics, sep="\t")
-
-    # def sim_func(input_tup):  # Must receive a single argument: a tuple.
-    #     return single_simulation(input_tup[0], input_tup[1], summary_file_path,
-    #                              num_sim, parallel_execs)
 
     # Multiprocess simulation call
     if run_parallel and not parallel_execs:
