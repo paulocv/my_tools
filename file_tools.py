@@ -131,10 +131,26 @@ def get_folder_name_from_argv(argi=2, root_folder="", argi_check=True):
 
 
 def make_folder(folder_path, silent=True):
+    """Creates given directory if non-existent"""
     if not os.path.exists(folder_path):
         os.system("mkdir -p '{}'".format(folder_path))
     elif not silent:
         print("Folder '{}' already exists.".format(folder_path))
+
+
+def opt_make_folder_and_add_sep(folder_path, silent=True):
+    """
+    Creates given directory if non-existent. Adds the SEP character if not there at the ent. Returns new folder name.
+    """
+    if folder_path[-len(SEP):] != SEP:
+        folder_path += SEP
+    if not os.path.exists(folder_path):
+        os.system("mkdir -p '{}'".format(folder_path))
+    elif not silent:
+        print("Folder '{}' already exists.".format(folder_path))
+
+    return folder_path
+
 
 # --------------------------------------------------------------------
 # USEFUL STRING OPERATIONS
@@ -224,6 +240,32 @@ def str_to_bool(string, truelist=None):
     return string in truelist
 
 
+def str_to_bool_safe(s, truelist=("True", "true", "T"), falselist=("False", "false", "F")):
+    """
+    Converts a boolean codified as a string. Instead of using 'eval', compares with lists of accepted strings for
+    both true and false bools, and raises an error if the string does not match any case.
+
+    Parameters
+    ----------
+    s : str
+        The string to be read from
+    truelist : tuple or list
+        Tuple or list of strings interpreted as True.
+    falselist : tuple or list
+        Tuple or list of strings interpreted as False.
+
+    Returns
+    -------
+    res : bool
+    """
+    if s in truelist:
+        return True
+    elif s in falselist:
+        return False
+    else:
+        raise ValueError("Hey, the string '{}' could not be understood as a boolean.".format(s))
+
+
 def str_to_dict(string, key_name=""):
     """Evaluates a string as a dict. Checks if border characters are
     '{' and '}', to avoid bad typing.
@@ -289,32 +331,6 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False,
             return std_value
 
 
-def str_to_bool_safe(s, truelist=("True", "true"), falselist=("False", "false")):
-    """
-    Converts a boolean codified as a string. Instead of using 'eval', compares with lists of accepted strings for
-    both true and false bools, and raises an error if the string does not match any case.
-
-    Parameters
-    ----------
-    s : str
-        The string to be read from
-    truelist : tuple or list
-        Tuple or list of strings interpreted as True.
-    falselist : tuple or list
-        Tuple or list of strings interpreted as False.
-
-    Returns
-    -------
-    res : bool
-    """
-    if s in truelist:
-        return True
-    elif s in falselist:
-        return False
-    else:
-        raise ValueError("Hey, the string '{}' could not be understood as a boolean.".format(s))
-
-
 def seconds_to_hhmmss(time_s):
     """Converts a time interval given in seconds to hh:mm:ss.
     Input can either be a string or floating point.
@@ -378,6 +394,8 @@ def read_optional_from_dict(input_dict, key, standard_val=None,
     informed, None is returned. Data can also be converted by
     a type cast.
     The given standard value is not converted by typecast.
+
+    WITH typecast=None, THIS CAN BE REPLACED BY dict.get() METHOD!
     """
     try:
         val = input_dict[key]
