@@ -289,6 +289,32 @@ def get_bool_from_dict(input_dict, key, truelist=None, raise_keyerror=False,
             return std_value
 
 
+def str_to_bool_safe(s, truelist=("True", "true"), falselist=("False", "false")):
+    """
+    Converts a boolean codified as a string. Instead of using 'eval', compares with lists of accepted strings for
+    both true and false bools, and raises an error if the string does not match any case.
+
+    Parameters
+    ----------
+    s : str
+        The string to be read from
+    truelist : tuple or list
+        Tuple or list of strings interpreted as True.
+    falselist : tuple or list
+        Tuple or list of strings interpreted as False.
+
+    Returns
+    -------
+    res : bool
+    """
+    if s in truelist:
+        return True
+    elif s in falselist:
+        return False
+    else:
+        raise ValueError("Hey, the string '{}' could not be understood as a boolean.".format(s))
+
+
 def seconds_to_hhmmss(time_s):
     """Converts a time interval given in seconds to hh:mm:ss.
     Input can either be a string or floating point.
