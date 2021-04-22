@@ -367,23 +367,28 @@ def read_csv_names(string, sep=","):
     return [remove_border_spaces(name) for name in string.split(sep)]
 
 
-def cast_to_export(value):
-    """Converts a given variable to a string which is 'good' to be
-    exported to output database files.
+def cast_to_export(value, float_fmt="{:12.6f}", int_fmt="{:12d}"):
     """
-    vtype = type(value)
-
-    # TODO: improve this to consider numpy int and float types, with all their variants
-    if vtype in [float, np.float32, np.float64]:
-        out = "{:12.6f}".format(value)
-
-    elif vtype in [int, np.int8, np.int16, np.int32, np.int64]:
-        out = "{:12d}".format(value)
-
+    Converts a given variable to a string in an adequate format for tabular files.
+    """
+    if isinstance(value, (float, np.floating)):
+        out = float_fmt.format(value)
+    elif isinstance(value, (int, np.integer)):
+        out = int_fmt.format(value)
     else:
         out = str(value)
-
     return out
+
+
+def cast_to_export_list(values, float_fmt="{:12.6f}", int_fmt="{:12d}", sep="\t") -> str:
+    """
+    Converts a list of values into strings to be exported as a fixed width string, using cast_to_export in each value.
+    Adds a sep character after each entry.
+    """
+    out_str = ""
+    for value in values:
+        out_str += cast_to_export(value, float_fmt, int_fmt) + sep
+    return out_str
 
 
 # -------------------------------------------------------------------
