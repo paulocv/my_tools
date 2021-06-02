@@ -139,7 +139,8 @@ mystyle_02 = {
 
     # Legend
     "legend.numpoints": 2,  # Uses two points as a sample
-    "legend.fontsize": 20,
+    "legend.fontsize": 18,
+    "legend.title_fontsize": 22,
     "legend.framealpha": 0.75,
 }
 
