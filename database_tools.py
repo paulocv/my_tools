@@ -95,8 +95,8 @@ def read_complete_output_file(filename,
     # pandas DataFrame with a multi-index.
     # Deprecated from pandas 0.25: pd.read_table
     df = pd.read_csv(filename, sep=delimiter,
-                       skiprows=header_size, header=None,
-                       comment=comment_char)
+                     skiprows=header_size, header=None,
+                     comment=comment_char, na_values=["NAN"], keep_default_na=True)
 
     # Eliminates a NAN column, which happens in case the line has another
     # delimiter at the end
