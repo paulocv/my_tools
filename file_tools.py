@@ -840,6 +840,51 @@ def tar_unzip_folder(tarname, remove_orig=True, verbose=False):
     if remove_orig:
         # os.system("rm " + dirname + SEP + "*")
         os.system("rm " + tarname)
+        
+
+def tar_folder(dirname, tarname=None, remove_orig=True, verbose=False):
+    """Produces a tarball from a folder, without compressing its contents"""
+    # Dirname here will not have the SEP character at the end
+    if dirname[-1] == SEP:
+        dirname = dirname[:-1]
+
+    parent_dir = os.path.dirname(dirname)  # Used to change (-C) to dir before creating tar
+    basename = os.path.basename(dirname)
+
+    # If tar_name is not informed, uses directory name
+    if tarname is None:
+        tarname = dirname + ".tar"
+
+    flags = "c"  # -c = Create tar file.
+    if verbose:
+        flags += "v"
+
+    # Command
+    #  -C = changes to directory during tar.
+    os.system("tar -C {} -{} -f {} {}".format(parent_dir, flags, tarname, basename))
+
+    # Removes the original folder
+    if remove_orig:
+        os.system("rm -r " + dirname)
+
+
+def untar_folder(tarname, remove_orig=True, verbose=False):
+    """Reverses a tar object into a directory again, without unzipping it."""
+
+    flags = "x"  # -x = extract.
+    if verbose:
+        flags += "v"
+
+    parent_dir = os.path.dirname(tarname)
+
+    # Command
+    #  -C = changes to directory during tar.
+    os.system("tar -C {} -{} -f {}".format(parent_dir, flags, tarname))
+
+    # Removes the original tar
+    if remove_orig:
+        # os.system("rm " + dirname + SEP + "*")
+        os.system("rm " + tarname)
 
 
 def possibly_unzip_file(fname, zip_suffixes=(".gz", ".zip"), raise_error=True):
