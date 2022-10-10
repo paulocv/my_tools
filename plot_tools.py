@@ -14,6 +14,102 @@ from toolbox.file_tools import SEP, write_config_string, list_to_csv
 _STD_USETEX = False
 
 
+
+# ---------------------------
+# Color, linestyle and other sequences
+# ---------------------------
+
+# Aux function: least common multiple.
+def _lcm(x, y):
+    """Least common multiple via brute (incremental) search."""
+    if x > y:
+        z = x
+    else:
+        z = y
+
+    while True:
+        if(z % x == 0) and (z % y == 0):
+            lcm = z
+            break
+        z += 1
+
+    return lcm
+
+
+# Qualitative printer friendly only color seqs
+colorbrewer_pf_01 = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33',
+                     '#a65628', '#f781bf', '#999999']
+colorbrewer_pf_02 = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666']
+colorbrewer_pf_03 = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462',
+                     '#b3de69', '#fccde5']
+
+# Colorblind friendly only color seqs
+colorbrewer_cbf_01 = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
+colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
+colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
+
+# SARS-CoV-2 metrics with viral load (paper): custom color schemes.
+r0_and_tg_colors_01 = ["#416985", "#F37355", "#CF7ED6", "#7080EC", "#81E1C5"]
+
+# Matplotlib modern standard
+default_colorlist = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+
+def set_color_cycle(colors):
+    """Warning: this will only setup the colors, reseting all other cyclic
+    properties.
+
+    To set up a property without affecting the other, implement
+    change_prop_cycle function.
+    """
+    plt.rcParams["axes.prop_cycle"] = cycler(color=colors)
+
+
+def set_composite_prop_cycle(**props):
+    """Sets the prop cycle to combinations of properties from seqs that
+    are not necessarily commensurable.
+    Each property is advanced at each new plot, unlike
+    set_product_prop_cycle.
+
+    Arguments are keywords as prop_name=prop_list.
+    """
+    # lcm()?? # Current function is for 2 values only.
+
+    # Gets the multiplication factor for each prop sequence
+    lens = [len(vals) for vals in props.values()]
+    total_len = reduce((lambda x, y: x * y), lens)  # Product of each element
+    mult_facs = [total_len // d for d in lens]
+
+    # Creates the composite cycler
+    comp_props = {key: n * list(vals)
+                  for n, (key, vals) in zip(mult_facs, props.items())}
+    prop_cycle = cycler(**comp_props)
+
+    # Sets it to mpl and returns
+    plt.rcParams["axes.prop_cycle"] = prop_cycle
+    return prop_cycle
+
+
+def set_product_prop_cycle(**props):
+    """Sets the prop cycle to combinations of properties from seqs that
+    are not necessarily commensurable.
+    The properties defined at last will cycle first ("faster"), followed
+    by the next and so on.
+
+    Arguments are keywords as prop_name=prop_list.
+    """
+    # Composite prop cycler
+    cycle_list = []
+    for key, vals in props.items():
+        cycle_list.append(cycler(**{key: vals}))
+
+    prop_cycle = reduce((lambda x, y: x * y), cycle_list)  # Product
+
+    # Sets it to mpl and returns
+    plt.rcParams["axes.prop_cycle"] = prop_cycle
+    return prop_cycle
+
+
 # ------------------------------------------
 # CUSTOM STYLES
 # ------------------------------------------
@@ -149,6 +245,25 @@ mystyle_02_docs += "a latex font much better than default, and others. "
 mystyle_02_docs += "Redesigned from mystyle_01 to look more modern."
 
 
+# --------------------
+# Style for the SARS-CoV-2 metrics paper. Made to be combined with ggplot.
+r0_and_tg_style_01 = {
+
+    # # Color and other cyclic line properties
+    # "axes.prop_cycle": cycler(color=r0_and_tg_colors_01),  # Doesn't work this way.
+    
+    # Lines and markers
+    "lines.linewidth": 1.5,
+
+    # Plot area properties
+    # "axes.grid": False,
+    "axes.facecolor": "whitesmoke",
+}
+
+r0_and_tg_style_01_docs = \
+    "Style for the SARS-CoV-2 metrics paper. Made to be combined with ggplot (call it first)."
+
+
 def create_mpl_style(name, style_dict, convert_lists=True, docstring=None):
     """Creates a .mplstyle file in the matplotlib styles folder.
 
@@ -224,99 +339,6 @@ def stdfigsize(scale=1, nrows=1, ncols=1, xtoy_ratio=1.3):
         xtoy_ratio = 1.61803398875
 
     return 7 * xtoy_ratio * scale * ncols, 7 * scale * nrows
-
-
-# ---------------------------
-# Color, linestyle and other sequences
-# ---------------------------
-
-
-# Aux function: least common multiple.
-def _lcm(x, y):
-    """Least common multiple via brute (incremental) search."""
-    if x > y:
-        z = x
-    else:
-        z = y
-
-    while True:
-        if(z % x == 0) and (z % y == 0):
-            lcm = z
-            break
-        z += 1
-
-    return lcm
-
-
-# Qualitative printer friendly only color seqs
-colorbrewer_pf_01 = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33',
-                     '#a65628', '#f781bf', '#999999']
-colorbrewer_pf_02 = ['#1b9e77', '#d95f02', '#7570b3', '#e7298a', '#66a61e', '#e6ab02', '#a6761d', '#666666']
-colorbrewer_pf_03 = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462',
-                     '#b3de69', '#fccde5']
-
-# Colorblind friendly only color seqs
-colorbrewer_cbf_01 = ['#a6cee3', '#1f78b4', '#b2df8a', '#33a02c']
-colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
-colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
-
-# Matplotlib modern standard
-default_colorlist = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-
-
-def set_color_cycle(colors):
-    """Warning: this will only setup the colors, reseting all other cyclic
-    properties.
-
-    To set up a property without affecting the other, implement
-    change_prop_cycle function.
-    """
-    plt.rcParams["axes.prop_cycle"] = cycler(color=colors)
-
-
-def set_composite_prop_cycle(**props):
-    """Sets the prop cycle to combinations of properties from seqs that
-    are not necessarily commensurable.
-    Each property is advanced at each new plot, unlike
-    set_product_prop_cycle.
-
-    Arguments are keywords as prop_name=prop_list.
-    """
-    # lcm()?? # Current function is for 2 values only.
-
-    # Gets the multiplication factor for each prop sequence
-    lens = [len(vals) for vals in props.values()]
-    total_len = reduce((lambda x, y: x * y), lens)  # Product of each element
-    mult_facs = [total_len // d for d in lens]
-
-    # Creates the composite cycler
-    comp_props = {key: n * list(vals)
-                  for n, (key, vals) in zip(mult_facs, props.items())}
-    prop_cycle = cycler(**comp_props)
-
-    # Sets it to mpl and returns
-    plt.rcParams["axes.prop_cycle"] = prop_cycle
-    return prop_cycle
-
-
-def set_product_prop_cycle(**props):
-    """Sets the prop cycle to combinations of properties from seqs that
-    are not necessarily commensurable.
-    The properties defined at last will cycle first ("faster"), followed
-    by the next and so on.
-
-    Arguments are keywords as prop_name=prop_list.
-    """
-    # Composite prop cycler
-    cycle_list = []
-    for key, vals in props.items():
-        cycle_list.append(cycler(**{key: vals}))
-
-    prop_cycle = reduce((lambda x, y: x * y), cycle_list)  # Product
-
-    # Sets it to mpl and returns
-    plt.rcParams["axes.prop_cycle"] = prop_cycle
-    return prop_cycle
 
 
 # ------------------------
