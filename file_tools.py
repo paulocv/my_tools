@@ -133,7 +133,8 @@ def get_folder_name_from_argv(argi=2, root_folder="", argi_check=True):
 def make_folder(folder_path, silent=True):
     """Creates given directory if non-existent"""
     if not os.path.exists(folder_path):
-        os.system("mkdir -p '{}'".format(folder_path))
+        # os.system("mkdir -p '{}'".format(folder_path))
+        os.makedirs(folder_path)  # OS independent
     elif not silent:
         print("Folder '{}' already exists.".format(folder_path))
 
