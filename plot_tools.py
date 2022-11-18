@@ -14,7 +14,6 @@ from toolbox.file_tools import SEP, write_config_string, list_to_csv
 _STD_USETEX = False
 
 
-
 # ---------------------------
 # Color, linestyle and other sequences
 # ---------------------------
@@ -28,7 +27,7 @@ def _lcm(x, y):
         z = y
 
     while True:
-        if(z % x == 0) and (z % y == 0):
+        if (z % x == 0) and (z % y == 0):
             lcm = z
             break
         z += 1
@@ -177,7 +176,6 @@ mystyle_01_docs = "A nice style for journal plots, with large fonts, minor ticks
 mystyle_01_docs += "a latex font much better than default, and others. "
 mystyle_01_docs += "Based on a style from Luiz Alves."
 
-
 # --------------------
 # Redesign of mystyle_01, to look slightly more modern.
 # Smaller ticks and a Times-like font.
@@ -244,14 +242,13 @@ mystyle_02_docs = "Another nice style for journal plots, with large fonts, minor
 mystyle_02_docs += "a latex font much better than default, and others. "
 mystyle_02_docs += "Redesigned from mystyle_01 to look more modern."
 
-
 # --------------------
 # Style for the SARS-CoV-2 metrics paper. Made to be combined with ggplot.
 r0_and_tg_style_01 = {
 
     # # Color and other cyclic line properties
     # "axes.prop_cycle": cycler(color=r0_and_tg_colors_01),  # Doesn't work this way.
-    
+
     # Lines and markers
     "lines.linewidth": 1.5,
 
@@ -372,7 +369,7 @@ def add_arrow(line, position=None, direction='right', size=15, color=None):
 
     if position is None:
         position = xdata.mean()
-    # find closest index
+    # find the closest index
     start_ind = np.argmin(np.absolute(xdata - position))
     if direction == 'right':
         end_ind = start_ind + 1
@@ -380,8 +377,8 @@ def add_arrow(line, position=None, direction='right', size=15, color=None):
         end_ind = start_ind - 1
 
     line.axes.annotate('',
-        xytext=(xdata[start_ind], ydata[start_ind]),
-        xy=(xdata[end_ind], ydata[end_ind]),
-        arrowprops=dict(arrowstyle="->", color=color),
-        size=size
-    )
+                       xytext=(xdata[start_ind], ydata[start_ind]),
+                       xy=(xdata[end_ind], ydata[end_ind]),
+                       arrowprops=dict(arrowstyle="->", color=color),
+                       size=size
+                       )
