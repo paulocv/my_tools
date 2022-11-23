@@ -48,7 +48,8 @@ colorbrewer_cbf_02 = ['#1b9e77', '#d95f02', '#7570b3']
 colorbrewer_cbf_03 = ['#66c2a5', '#fc8d62', '#8da0cb']
 
 # SARS-CoV-2 metrics with viral load (paper): custom color schemes.
-r0_and_tg_colors_01 = ["#416985", "#F37355", "#CF7ED6", "#7080EC", "#81E1C5"]
+# r0_and_tg_colors_01 = ["#416985", "#F37355", "#CF7ED6", "#7080EC", "#81E1C5"]
+r0_and_tg_colors_01 = ["#F37355", "#416985", "#CF7ED6", "#7080EC", "#81E1C5"]
 
 # Matplotlib modern standard
 default_colorlist = plt.rcParams["axes.prop_cycle"].by_key()["color"]
