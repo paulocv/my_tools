@@ -2,12 +2,15 @@
 Version: 2.0 - First version to reveive a version number. :p
 (1.x will be left for older non-registered versions).
 """
+import io
 import json
+import numpy as np
 import os
 import sys
-import numpy as np
 
-SEP = "/"  # Use '/' for Linux and '\\' for Windows.
+from typing import Union, Sequence
+
+SEP = "/"  # Use '/' for Linux and '\\' for Windows.  # TODO: MAKE AN ALIAS OF OS.PATH.SEP
 HEADER_END = "-----\n"
 
 # --------------------------------
@@ -713,6 +716,67 @@ def count_header_lines(file_name, header_end=HEADER_END):
           )
     fp.close()
     return 0
+
+
+# from collections.abc import I
+def count_file_chunks(fp: Union[str, io.TextIOBase], sep_lines: Sequence = None):
+    """
+    Returns the sizes of chunks in a segmented file.
+    A segmented file is assumed to have chunks split by separator lines.
+
+    Important: chunk sizes do not count the separator lines.
+    Important: if the last line in file is empty, it is ignored (by fp.readlines()).
+
+    Parameters
+    ----------
+    fp : Union[str, io.TextIOBase]
+        Path to a file, or open/closed text file.
+        If it is a text file object, it is returned as the same open/closed status. If open, the stream will
+        be consumed from where it was until the end of the file.
+    sep_lines : Sequence
+        Default: ["-----\n"]
+        A sequence of separator lines to test for each line. Any element that is (exactly) found in file will
+        define a new chunk.
+
+    Returns
+    -------
+    list
+        List with chunk sizes, EXCLUDING the separator lines. The number of items is the number of chunks.
+        The total number of lines is given by: sum(result) + len(result) - 1
+
+    """
+    # --- Manage file as a name or as an open/closed file
+    fp_was_str = isinstance(fp, str)
+    if fp_was_str:
+        fp = open(fp, "r")
+
+    fp_was_closed = fp.closed
+    if fp_was_closed:
+        fp = open(fp.name, "r")
+
+    # --- Read file contents at once
+    lines = fp.readlines()
+
+    if fp_was_closed or fp_was_str:  # Close again if it was closed before
+        fp.close()
+
+    # --- Handle default sep_lines
+    if sep_lines is None:
+        sep_lines = [HEADER_END]
+
+    # --- Check contents to count chunks
+    chunks = list()
+    count = 0
+
+    for line in lines:
+        if line in sep_lines:
+            chunks.append(count)
+            count = 0
+        else:
+            count += 1
+    chunks.append(count)
+
+    return chunks
 
 
 def read_file_header(filename, header_end=HEADER_END):
