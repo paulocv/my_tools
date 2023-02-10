@@ -685,6 +685,35 @@ def write_config_string(input_dict, entry_char='>', attribution_char='=',
     return result_str
 
 
+def write_config_file(fname, input_dict, entry_char='>', attribution_char='=',
+                        usekeys=None):
+    """ Exports a dictionary of inputs to a file. Calls write_config_string.
+
+    Inputs
+    ----------
+    input_dict : dict
+        Dictionary with the inputs to be exported to a string.
+    entry_char : str
+        Character used to start an input line in the config file.
+    attrbution_char : str
+        Character that separates the key name from its value.
+    comment_char : str
+        Character that indicates a commentary. Everything after this
+        character is ignored.
+    usekeys : list
+        Use that input to select the input_dict entries that you want
+        to export.
+        Inform a list of the desired keys. Default is the whole dict.
+
+    Returns
+    -------
+    result_str : str
+        String with the formated inputs that were read from the input_dict.
+    """
+    with open(fname, "w") as fp:
+        fp.write(write_config_string(input_dict, entry_char, attribution_char, usekeys))
+
+
 def count_header_lines(file_name, header_end=HEADER_END):
     """Opens and reads a file until it finds a 'header finalization' line.
     By standard, such line is '-----\n' (five -).
