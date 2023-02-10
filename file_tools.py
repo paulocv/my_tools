@@ -10,7 +10,7 @@ import sys
 
 from typing import Union, Sequence
 
-SEP = "/"  # Use '/' for Linux and '\\' for Windows.  # TODO: MAKE AN ALIAS OF OS.PATH.SEP
+SEP = os.path.sep  # Alias for the os-dependent path separator
 HEADER_END = "-----\n"
 
 # --------------------------------
