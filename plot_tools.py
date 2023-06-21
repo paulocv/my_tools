@@ -110,6 +110,11 @@ def set_product_prop_cycle(**props):
     return prop_cycle
 
 
+def get_color_cycle_list(rc=None):
+    rc = plt.rcParams if rc is None else rc
+    return rc['axes.prop_cycle'].by_key()['color']
+
+
 # ------------------------------------------
 # CUSTOM STYLES
 # ------------------------------------------
