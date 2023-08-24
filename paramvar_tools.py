@@ -330,6 +330,40 @@ def build_single_input_dict(mult_input_dict, keys_list, values_list):
     return single_input_dict
 
 
+def map_parallel_or_sequential(task, contents, ncpus=1, pool=None):
+    """
+    Map a function (task) into an iterable of inputs (contents), using either a sequential loop (if ncpus=1) or a
+    pool of concurrent processes.
+    Alternatively, for running in a pool of processes, a previously created pool can be informed, in which case ncpus is
+    ignored.
+
+    Parameters
+    ----------
+    task : callable
+        A single-argument function to map on inputs.
+    contents : iterable
+        An iterable or sequence of inputs, each one will be passed as the only argument of 'task'.
+    ncpus : int
+        Number of concurrent processes. If ncpus=1 (default), a simple for loop is used. If greater than 1, a process
+        pool is created. If parameter 'pool' is informed, ncpus is ignored.
+    pool : Any
+        A pathos process pool previously created. Overrides parameter 'ncpus' if informed.
+    """
+    if ncpus == 1 and pool is None:
+        # Run sequentially
+        results = list()
+        for item in contents:
+            results.append(task(item))
+
+        return results
+
+    if pool is None:
+        pool = mp.ProcessPool(ncpus=ncpus)
+
+    # Run parallel pool
+    return pool.map(task, contents)
+
+
 def run_simulations_general(mult_input_dict, sim_func,
                             summary_file_path, var_params_tuple=None,
                             run_parallel=False, parallel_execs=False,
