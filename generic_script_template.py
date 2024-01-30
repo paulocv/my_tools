@@ -25,6 +25,7 @@ def main():
     data = Data()
 
     # --- Main operations
+    print(f"WATCHPOINT: input_params = \n{params.__dict__}")
 
 
 # -------------------------------------------------------------------
