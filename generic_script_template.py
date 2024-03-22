@@ -9,11 +9,6 @@ from pathlib import Path
 import yaml  # Requires: PyYaml
 
 
-DEFAULT_PARAMS = dict(
-    param_01=1,
-)
-
-
 def main():
     # --- Preamble operations
     args: CLArgs = get_arg_parser().parse_args()
@@ -34,8 +29,8 @@ def main():
 
 class CLArgs:
     """Command line arguments. This is only used for type hinting."""
-    arg_01: str
-    arg_02: int
+    arg_01: str  # Uninitialized parameter, no default.
+    arg_02: int = 0  # Parameter with default.
     # ...
 
     input_file: Path
