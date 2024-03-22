@@ -111,7 +111,7 @@ def import_params(args: CLArgs):
     # Script Default < Input File < Command Line Arguments
     params = Params()
 
-    params.__dict__.update(DEFAULT_PARAMS)
+    # params.__dict__.update(DEFAULT_PARAMS)
     params.__dict__.update(input_dict)
     params.__dict__.update(valid_args_dict)
 
