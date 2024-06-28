@@ -4,6 +4,7 @@ Version: 2.0 - First version to reveive a version number. :p
 """
 import io
 import json
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -863,9 +864,9 @@ def prepare_dict_for_yaml_export(d: dict):
     """
     for key, val in d.items():
 
-        # Recurse through inner dictionary
-        if isinstance(val, dict):
-            prepare_dict_for_yaml_export(val)
+        # Ordered and default dict
+        if isinstance(val, (OrderedDict, defaultdict)):
+            d[key] = dict(val)
 
         # pathlib.Path into its string
         if isinstance(val, Path):
@@ -880,6 +881,10 @@ def prepare_dict_for_yaml_export(d: dict):
                 val, (tuple, np.ndarray)
         ):
             d[key] = list(val)
+
+        # Recurse through inner dictionary
+        if isinstance(val, dict):
+            prepare_dict_for_yaml_export(val)
 
 
 # -------------------------------
