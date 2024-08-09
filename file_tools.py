@@ -2,12 +2,12 @@
 Version: 2.0 - First version to reveive a version number. :p
 (1.x will be left for older non-registered versions).
 """
+from collections import OrderedDict, defaultdict
 import io
 import json
-from collections import OrderedDict, defaultdict
-from pathlib import Path
-
 import numpy as np
+from pathlib import Path
+import requests
 import os
 import sys
 
@@ -1060,3 +1060,42 @@ def possibly_unzip_file(fname, zip_suffixes=(".gz", ".zip"), raise_error=True):
 def remove_file(fname):
     """Shorthand to remove file. Useful for modules that do not import 'os'."""
     return os.system("rm " + fname)
+
+
+# --------------------------------
+# ONLINE FILE TOOLS
+# --------------------------------
+
+
+def download_file_simple(url, local_fname, makedirs=True):
+    """
+    Download a file from a given URL and save it locally.
+
+    Parameters
+    ----------
+    url : str
+        The URL of the file to download.
+    local_fname : str
+        The path to save the downloaded file.
+    makedirs : bool, optional
+        If True, create the necessary directories for the local file path.
+        Default is True.
+
+    Raises
+    ------
+    RuntimeError
+        If the request to download the file fails.
+    """
+    # Send a GET request to the URL
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+
+        # Open the file in write-binary mode and save the content
+        if makedirs:
+            os.makedirs(os.path.dirname(local_fname), exist_ok=True)
+        with open(local_fname, 'wb') as file:
+            file.write(response.content)
+    else:
+        raise RuntimeError(f"Failed to download the file at {url}. Status code: {response.status_code}")
