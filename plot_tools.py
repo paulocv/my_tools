@@ -4,6 +4,7 @@ from cycler import cycler
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.font_manager
+import matplotlib.transforms
 import numpy as np
 import os
 
@@ -350,13 +351,30 @@ def stdfigsize(scale=1, nrows=1, ncols=1, xtoy_ratio=1.3):
 
 
 def rotate_ax_labels(ax, angle=60, xy="x", which="major"):
-    """This function could be included in my plot_tools."""
     labels = (
         ax.get_xticklabels(which=which)
         if xy == "x" else ax.get_yticklabels(which=which))
 
     for label in labels:
         label.set(rotation=angle, horizontalalignment='right')
+
+
+def translate_ax_labels(ax, offset, xy="x", which="major"):
+    """TODO: try other scales than fig.dpi_scale_trans """
+    fig = ax.figure
+    if xy == "x":
+        labels = ax.get_xticklabels(which=which)
+        offset_obj = mpl.transforms.ScaledTranslation(offset, 0, fig.dpi_scale_trans)
+    elif xy == "y":
+        labels = ax.get_yticklabels(which=which)
+        offset_obj = mpl.transforms.ScaledTranslation(0, offset, fig.dpi_scale_trans)
+    else:
+        raise ValueError(
+            f"Argument `xy` must by either \"x\" or \"y\" but got \"{xy}\""
+        )
+
+    for label in labels:
+        label.set_transform(label.get_transform() + offset_obj)
 
 
 def get_available_font_names():
